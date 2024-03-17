@@ -24,6 +24,11 @@
   },
   "jest": {
     "collectCoverage": true,
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "/test/",
+      "/dist/"
+    ],
     "moduleFileExtensions": [
       "ts",
       "tsx",
