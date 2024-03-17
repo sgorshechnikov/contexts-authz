@@ -3,6 +3,6 @@
   "extends": "./tsconfig.root.json",
   "references": [
     { "path": "packages/authz-grammar" },
-    { "path": "packages/authz-cli" },
+    { "path": "packages/authz-cli" }
   ]
 }

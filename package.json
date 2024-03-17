@@ -2,13 +2,14 @@
   "name": "contexts-authz",
   "scripts": {
     "test": "jest",
-    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "build": "tsc --build --verbose",
     "lint": "npx eslint ."
   },
   "version": "1.0.0",
   "description": "Zanzibar inspired permission definition and resolution library",
   "author": "sgorshechnikov",
-  "license": "ISC",
+  "license": "MIT",
   "workspaces": [
     "packages/*"
   ],
