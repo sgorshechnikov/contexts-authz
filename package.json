@@ -1,5 +1,8 @@
 {
   "name": "contexts-authz",
+  "repository": {
+    "url": "https://github.com/sgorshechnikov/contexts-authz"
+  },
   "scripts": {
     "test": "jest",
     "clean": "tsc --build --clean",
