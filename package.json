@@ -1,7 +1,7 @@
 {
   "name": "contexts-authz",
   "repository": {
-    "url": "https://github.com/sgorshechnikov/contexts-authz"
+    "url": "git+https://github.com/sgorshechnikov/contexts-authz.git"
   },
   "scripts": {
     "test": "jest",
