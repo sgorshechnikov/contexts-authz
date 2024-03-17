@@ -1,6 +1,6 @@
 {
   "name": "@contexts-authz/authz-cli",
-  "version": "1.0.0",
+  "version": "1.0.6",
   "main": "index.js",
   "dependencies": {
     "@contexts-authz/authz-grammar": "^1.0.0",
