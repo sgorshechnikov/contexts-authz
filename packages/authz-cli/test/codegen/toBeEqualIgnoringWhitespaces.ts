@@ -34,6 +34,7 @@ function toBeEqualIgnoringWhitespaces(actual: string, expected: string): Expecta
 }
 
 declare global {
+  //eslint-disable-next-line @typescript-eslint/no-namespace
   namespace jest {
     //eslint-disable-next-line @typescript-eslint/no-unused-vars
     interface Matchers<R> {
