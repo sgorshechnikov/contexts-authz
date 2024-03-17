@@ -1,0 +1,47 @@
+{
+  "name": "contexts-authz",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc --build",
+    "lint": "npx eslint ."
+  },
+  "version": "1.0.0",
+  "description": "Zanzibar inspired permission definition and resolution library",
+  "author": "sgorshechnikov",
+  "license": "ISC",
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.28",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.2"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ],
+    "roots": [
+      "./packages/authz-grammar/test",
+      "./packages/authz-cli/test"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testMatch": [
+      "**/*.spec.ts"
+    ],
+    "testTimeout": 120000
+  }
+}
