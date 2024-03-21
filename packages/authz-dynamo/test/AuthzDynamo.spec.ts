@@ -71,7 +71,7 @@ describe('getPermissions', () => {
     jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => {
       return Promise.resolve({
         Item: {
-          Relation: 'relation#member'
+          Relation: 'member'
         }
       })
     })
