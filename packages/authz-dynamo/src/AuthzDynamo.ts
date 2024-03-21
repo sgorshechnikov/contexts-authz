@@ -63,7 +63,7 @@ export class AuthzDynamo implements Authz {
     if (!result || !result.Item) {
       return []
     } else {
-      const relation: string = result.Item.Relation.split('#')[1]
+      const relation: string = result.Item.Relation
       if (!applicableRelations(principal.__typename, typeDefinition).includes(relation)) {
         return []
       }
@@ -126,7 +126,7 @@ export class AuthzDynamo implements Authz {
     if (!result || !result.Item) {
       return undefined
     } else {
-      const relation: string = result.Item.Relation.split('#')[1]
+      const relation: string = result.Item.Relation
       if (!applicableRelations(principal.__typename, typeDefinition).includes(relation)) {
         return undefined
       }
