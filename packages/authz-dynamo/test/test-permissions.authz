@@ -1,0 +1,30 @@
+definition user {}
+
+definition org {
+  relation administrator: user
+
+  permission administer = administrator
+}
+
+definition workspace {
+  relation owner: org
+
+  relation administrator: user
+  relation member: user
+  relation guest: user
+
+  permission administer = administrator + owner.admin
+  permission edit = administrator + owner.admin + member
+  permission view = administrator + owner.admin + member + guest
+}
+
+definition document {
+  relation owner: user | workspace
+
+  relation member: user
+  relation guest: user
+
+  permission delete = owner + owner.admin
+  permission edit = owner + owner.admin + member
+  permission view = owner + owner.admin + member + guest
+}

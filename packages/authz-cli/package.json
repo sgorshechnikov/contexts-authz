@@ -1,9 +1,9 @@
 {
   "name": "@contexts-authz/authz-cli",
-  "version": "1.0.6",
+  "version": "1.0.9",
   "main": "index.js",
   "dependencies": {
-    "@contexts-authz/authz-grammar": "^1.0.0",
+    "@contexts-authz/authz-grammar": "1.0.9",
     "dts-dom": "^3.7.0",
     "lodash": "^4.17.21",
     "commander": "^12.0.0",

@@ -11,47 +11,20 @@ describe('AuthZTypesGenerator', () => {
     const codeGenerator = new AuthZTypesGenerator(ast)
     const code = codeGenerator.generate()
     const expected = `
-      export interface ObjectDefinition<Permission = void> {
-        id: string;
-        __typename: string;
-      }
-
+      import {ObjectDefinition} from '@contexts-authz/authz-model';
+      
       export class User implements ObjectDefinition {
-        readonly id: string;
-        constructor(id: string);
-        __typename: "user";
+        constructor(readonly id: string) {}
+        __typename = "user";
       }
     `
 
     expect(code).toBeEqualIgnoringWhitespaces(expected)
   })
 
-  test('generates namespaced types when configured', () => {
-    const input = `
-      definition user {}
-    `
-    const ast = buildAst(input)
-    const codeGenerator = new AuthZTypesGenerator(ast, {namespace: 'AuthZ'})
-    const code = codeGenerator.generate()
-    const expected = `
-      declare namespace AuthZ {
-        interface ObjectDefinition<Permission = void> {
-          id: string;
-          __typename: string;
-        }
-  
-        class User implements ObjectDefinition {
-          readonly id: string;
-          constructor(id: string);
-          __typename: "user";
-        }
-      }
-    `
 
-    expect(code).toBeEqualIgnoringWhitespaces(expected)
-  })
 
-  test('generates types with permissions', () => {
+  test('generates types with permissions and relations', () => {
     const input = `
       definition user {}
       
@@ -61,31 +34,96 @@ describe('AuthZTypesGenerator', () => {
       }
     `
     const ast = buildAst(input)
-    const codeGenerator = new AuthZTypesGenerator(ast, {namespace: 'AuthZ'})
+    const codeGenerator = new AuthZTypesGenerator(ast)
     const code = codeGenerator.generate()
     const expected = `
-      declare namespace AuthZ {
-        interface ObjectDefinition<Permission = void> {
-          id: string;
-          __typename: string;
-        }
-  
-        class User implements ObjectDefinition {
-          readonly id: string;
-          constructor(id: string);
-          __typename: "user";
+      import {ObjectDefinition} from '@contexts-authz/authz-model';
+      
+      export class User implements ObjectDefinition {
+        constructor(readonly id: string) {}
+        __typename = "user";
+      }
+      
+      export class Group implements ObjectDefinition<Group.Permission, Group.Relation> {
+        constructor(readonly id: string) {}
+        __typename = "group";
+      }
+      
+      export namespace Group {
+        export enum Permission {
+            View = "view",
         }
         
-        namespace Group {
-          const enum Permission {
-              View = "view",
-          }
+        export enum Relation {
+          Owner = "owner",
         }
-        
-        class Group implements ObjectDefinition<Group.Permission> {
-          readonly id: string;
-          constructor(id: string);
-          __typename: "group";
+      }
+    `
+
+    expect(code).toBeEqualIgnoringWhitespaces(expected)
+  })
+
+  test('generates types with permissions and no relations', () => {
+    const input = `
+      definition user {}
+      
+      definition group {
+        permission view = user
+      }
+    `
+    const ast = buildAst(input)
+    const codeGenerator = new AuthZTypesGenerator(ast)
+    const code = codeGenerator.generate()
+    const expected = `
+      import {ObjectDefinition} from '@contexts-authz/authz-model';
+      
+      export class User implements ObjectDefinition {
+        constructor(readonly id: string) {}
+        __typename = "user";
+      }
+      
+      export class Group implements ObjectDefinition<Group.Permission, void> {
+        constructor(readonly id: string) {}
+        __typename = "group";
+      }
+            
+      export namespace Group {
+        export enum Permission {
+            View = "view",
+        }
+      }
+    `
+
+    expect(code).toBeEqualIgnoringWhitespaces(expected)
+  })
+
+  test('generates types with relations and no permissions', () => {
+    const input = `
+      definition user {}
+      
+      definition group {
+        relation owner: user
+      }
+    `
+    const ast = buildAst(input)
+    const codeGenerator = new AuthZTypesGenerator(ast)
+    const code = codeGenerator.generate()
+    const expected = `
+      import {ObjectDefinition} from '@contexts-authz/authz-model';
+      
+      export class User implements ObjectDefinition {
+        constructor(readonly id: string) {}
+        __typename = "user";
+      }
+
+      export class Group implements ObjectDefinition<void, Group.Relation> {
+        constructor(readonly id: string) {}
+        __typename = "group";
+      }
+      
+      export namespace Group {
+        export enum Relation {
+          Owner = "owner",
         }
       }
     `

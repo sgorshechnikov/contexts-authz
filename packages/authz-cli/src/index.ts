@@ -14,7 +14,6 @@ import * as fs from "fs";
 export type AuthzCodegenConfig = {
   overwrite: boolean;
   schema: string;
-  namespace?: string;
   generates: {
     [output: string]: {
       //empty
@@ -60,9 +59,7 @@ async function runScript() {
 
   const modelAst: AuthzModel = buildAst(authzSchemaString)
 
-  const codeGenerator = new AuthZTypesGenerator(modelAst, {
-    namespace: config.namespace,
-  })
+  const codeGenerator = new AuthZTypesGenerator(modelAst)
 
   console.log(`✔️ Successfully parsed AuthZ schema: ${modelAst.definitions.length} definitions found.`)
   console.log(`🚀 Generating code...`)

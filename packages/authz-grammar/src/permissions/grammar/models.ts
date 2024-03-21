@@ -15,22 +15,22 @@ export interface Model {
 
 export interface AuthzModel extends Model {
   type: ModelType.AuthzModel
-  definitions: TypeDefinition[];
+  definitions: Array<TypeDefinition>;
 }
 
 export interface TypeDefinition extends Model {
   type: ModelType.Definition
   name: string;
 
-  relations: Relation[];
-  permissions: Permission[];
+  relations: Array<Relation>;
+  permissions: Array<Permission>;
 }
 
 export interface Relation extends Model {
   type: ModelType.Relation
   name: string;
 
-  relationExpression: RelationExpression[];
+  relationExpression: Array<RelationExpression>;
 }
 
 export interface RelationExpression extends Model {
