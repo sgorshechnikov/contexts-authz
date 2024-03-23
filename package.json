@@ -9,7 +9,7 @@
     "build": "tsc --build --verbose",
     "lint": "npx eslint ."
   },
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Zanzibar inspired permission definition and resolution library",
   "author": "sgorshechnikov",
   "license": "MIT",
