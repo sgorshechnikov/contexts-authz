@@ -1,10 +1,7 @@
-import {Authz, ObjectDefinition, ObjectRelations} from '@contexts-authz/authz-model';
+import {Authz, ObjectDefinition, ObjectRelation, ObjectRelations} from '@contexts-authz/authz-model';
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
-import {GetCommand, PutCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb";
-import {
-  AuthzModel,
-  buildAst,
-} from "@contexts-authz/authz-grammar";
+import {BatchGetCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb";
+import {AuthzModel, buildAst,} from "@contexts-authz/authz-grammar";
 import {NativeAttributeValue} from "@aws-sdk/util-dynamodb";
 import {applicableRelations, permissionsForRelation, requireTypeDefinition} from "./util";
 
@@ -93,7 +90,6 @@ export class AuthzDynamo implements Authz {
     if (!data || !data.Items) {
       throw new Error(`Failed to fetch relations for entity ${resource.__typename}#${resource.id}`)
     } else {
-      const cursor = btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK)
       return {
         resource: resource,
         relations: data.Items.map((item: Record<string, NativeAttributeValue>) => {
@@ -103,9 +99,10 @@ export class AuthzDynamo implements Authz {
               id: item.PK.split('#')[1],
             } as ObjectDefinition<unknown, unknown>,
             relation: item.Relation as R,
+            cursor: btoa(item.PK),
           }
         }),
-        cursor: cursor,
+        cursor: btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK),
       }
     }
   }
@@ -153,7 +150,6 @@ export class AuthzDynamo implements Authz {
     if (!data || !data.Items) {
       throw new Error(`Failed to fetch relations for principal ${principal.__typename}#${principal.id}`)
     } else {
-      const cursor = btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).SK)
       return {
         resource: principal,
         relations: data.Items.map((item: Record<string, NativeAttributeValue>) => {
@@ -163,12 +159,42 @@ export class AuthzDynamo implements Authz {
               id: item.SK.split('#')[1],
             } as ObjectDefinition<unknown, unknown>,
             relation: item.Relation as unknown,
+            cursor: btoa(item.SK),
           }
         }),
-        cursor: cursor,
+        cursor: btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).SK),
       }
     }
 
+  }
+
+  async getPrincipalRelationsForEntities<R>(principal: ObjectDefinition<unknown, unknown>, resources: ObjectDefinition<unknown, R>[]): Promise<ObjectRelation<R>[]> {
+    const command = new BatchGetCommand({
+      RequestItems: {
+        [this.config.tableName]: {
+          Keys: resources.map(resource => ({
+            PK: `${principal.__typename}#${principal.id}`,
+            SK: `${resource.__typename}#${resource.id}`,
+          }))
+        }
+      }
+    })
+
+    const data = await this.dynamoClient.send(command)
+
+    if (!data || !data.Responses || !data.Responses[this.config.tableName]) {
+      throw new Error(`Failed to fetch relations for principal ${principal.__typename}#${principal.id}`)
+    } else {
+      return data.Responses[this.config.tableName].map((item: Record<string, NativeAttributeValue>) => {
+        return {
+          object: {
+            __typename: item.SK.split('#')[0],
+            id: item.SK.split('#')[1],
+          } as ObjectDefinition<unknown, unknown>,
+          relation: item.Relation as R,
+        }
+      })
+    }
   }
 
   async principalHasPermission<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, permission: P): Promise<boolean> {
@@ -184,8 +210,8 @@ export class AuthzDynamo implements Authz {
         Delete: {
           TableName: this.config.tableName,
           Key: {
-            PK: { S: `${relation.object.__typename}#${relation.object.id}` },
-            SK: { S: `${relationsToDelete.resource.__typename}#${relationsToDelete.resource.id}` },
+            PK: {S: `${relation.object.__typename}#${relation.object.id}`},
+            SK: {S: `${relationsToDelete.resource.__typename}#${relationsToDelete.resource.id}`},
           }
         }
       }))

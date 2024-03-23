@@ -8,10 +8,12 @@ export type Paginated = {
   cursor: string
 }
 
+export type ObjectRelation<R> = {
+  object: ObjectDefinition<unknown, unknown>,
+  relation: R,
+}
+
 export type ObjectRelations<R> = Paginated & {
   resource: ObjectDefinition<unknown, R>,
-  relations: {
-    object: ObjectDefinition<unknown, unknown>,
-    relation: R,
-  }[]
+  relations: (ObjectRelation<R> & Paginated)[]
 }

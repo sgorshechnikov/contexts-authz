@@ -2,7 +2,7 @@ import {getAuthZDefs} from "./test-helpers";
 import {AuthzDynamo} from "../src/AuthzDynamo";
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
 import {Org, User, Workspace} from "./test-model";
-import {GetCommand, PutCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb"
+import {BatchGetCommand, GetCommand, PutCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb"
 import './toBeMatchingDynamoCommand';
 
 jest.mock('@aws-sdk/client-dynamodb')
@@ -212,6 +212,7 @@ describe('getRelations', () => {
           __typename: relationObject.__typename,
         },
         relation: 'member',
+        cursor: btoa(`${relationObject.__typename}#${relationObject.id}`),
       }]
     }
     expect(relations).toEqual(expectedRelations)
@@ -300,8 +301,61 @@ describe('getRelations', () => {
             __typename: resource.__typename,
           },
           relation: 'member',
+          cursor: btoa(`${resource.__typename}#${resource.id}`),
         }]
       })
+    })
+  })
+
+  describe('getPrincipalRelationsForEntities', () => {
+    test('should create right request to dynamo', async () => {
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      const expectedDynamoCommand = new BatchGetCommand({
+        RequestItems: {
+          [TEST_TABLE]: {
+            Keys: [{
+              PK: `${principal.__typename}#${principal.id}`,
+              SK: `${resource.__typename}#${resource.id}`,
+            }]
+          }
+        }
+      })
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Responses: {
+          [TEST_TABLE]: [{
+            PK: `${principal.__typename}#${principal.id}`,
+            SK: `${resource.__typename}#${resource.id}`,
+            Relation: 'member'
+          }]
+        }
+      }))
+      await authzDynamo.getPrincipalRelationsForEntities(principal, [resource])
+
+      expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+    })
+
+    test('should return the relations', async () => {
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Responses: {
+          [TEST_TABLE]: [{
+            PK: `${principal.__typename}#${principal.id}`,
+            SK: `${resource.__typename}#${resource.id}`,
+            Relation: 'member'
+          }]
+        }
+      }))
+      const relations = await authzDynamo.getPrincipalRelationsForEntities(principal, [resource])
+
+      expect(relations).toEqual([{
+        object: resource,
+        relation: 'member',
+      }])
     })
   })
 
