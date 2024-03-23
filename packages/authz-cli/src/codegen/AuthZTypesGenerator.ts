@@ -20,7 +20,11 @@ export class AuthZTypesGenerator {
   }
 
   generate(): string {
-    const typeDeclarations: (ClassDeclaration | NamespaceDeclaration)[] = []
+    const typeDeclarations: TopLevelDeclaration[] = []
+
+    const typeDeclarationsEnum = this.generateTypesDeclarationsEnum(this.model.definitions)
+
+    typeDeclarations.push(typeDeclarationsEnum)
 
     this.model.definitions.forEach((definition) => {
       typeDeclarations.push(...this.generateTypesForDefinition(definition))
@@ -28,8 +32,8 @@ export class AuthZTypesGenerator {
 
     return [objectDefinitionImport as TopLevelDeclaration].concat(typeDeclarations)
         .map((declaration) => dom.emit(declaration))
-        .join('\n\n')
-        .replace(/const enum/g, 'export enum')
+        .join('')
+        .replace(/(?:export)? const enum/g, 'export enum')
         .replace(/constructor\((.*)\);/g, "constructor($1) {}")
         .replace(/__typename: "(\w+)";/g, '__typename = "$1";')
   }
@@ -75,6 +79,14 @@ export class AuthZTypesGenerator {
     }
 
     return declarations
+  }
+
+  private generateTypesDeclarationsEnum(definitions: TypeDefinition[]) {
+    const typeDeclarationsEnum = dom.create.enum('AuthzDefinitions', true, DeclarationFlags.Export)
+    typeDeclarationsEnum.members = definitions.map((definition) => {
+      return dom.create.enumValue(pascalCase(definition.name), definition.name)
+    })
+    return typeDeclarationsEnum
   }
 
   private generatePermissionEnum(permissions: Permission[]) {

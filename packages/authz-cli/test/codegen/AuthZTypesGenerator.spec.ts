@@ -13,6 +13,10 @@ describe('AuthZTypesGenerator', () => {
     const expected = `
       import {ObjectDefinition} from '@contexts-authz/authz-model';
       
+      export enum AuthzDefinitions {
+        User = "user",
+      }
+      
       export class User implements ObjectDefinition {
         constructor(readonly id: string) {}
         __typename = "user";
@@ -38,6 +42,11 @@ describe('AuthZTypesGenerator', () => {
     const code = codeGenerator.generate()
     const expected = `
       import {ObjectDefinition} from '@contexts-authz/authz-model';
+      
+      export enum AuthzDefinitions {
+        User = "user",
+        Group = "group",
+      }
       
       export class User implements ObjectDefinition {
         constructor(readonly id: string) {}
@@ -77,6 +86,11 @@ describe('AuthZTypesGenerator', () => {
     const expected = `
       import {ObjectDefinition} from '@contexts-authz/authz-model';
       
+      export enum AuthzDefinitions {
+        User = "user",
+        Group = "group",
+      }
+      
       export class User implements ObjectDefinition {
         constructor(readonly id: string) {}
         __typename = "user";
@@ -110,6 +124,11 @@ describe('AuthZTypesGenerator', () => {
     const code = codeGenerator.generate()
     const expected = `
       import {ObjectDefinition} from '@contexts-authz/authz-model';
+      
+      export enum AuthzDefinitions {
+        User = "user",
+        Group = "group",
+      }
       
       export class User implements ObjectDefinition {
         constructor(readonly id: string) {}
