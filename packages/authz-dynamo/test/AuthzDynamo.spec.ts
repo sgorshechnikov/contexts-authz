@@ -354,20 +354,8 @@ describe('getRelations', () => {
 
   describe('removeAllObjectRelations', () => {
     test('should create right requests to dynamo', async () => {
-      const nItems = 500
       const principal = new User('user-id')
       const resource = new Org('org-id')
-
-      const expectedQueryCommand = new QueryCommand({
-        TableName: TEST_TABLE,
-        IndexName: "RolesByResource",
-        KeyConditionExpression: "SK = :sk",
-        ExpressionAttributeValues: {
-          ":sk": `${resource.__typename}#${resource.id}`,
-        },
-        Limit: nItems,
-        ExclusiveStartKey: undefined,
-      })
 
       const expectedDeleteCommand = new TransactWriteCommand({
         TransactItems: [{
