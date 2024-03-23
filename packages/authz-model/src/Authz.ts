@@ -1,7 +1,7 @@
 import {ObjectDefinition, ObjectRelations} from "./authz-types";
 
 export interface Authz {
-  principalHasPermission<P>(principal: ObjectDefinition<P, unknown>, resource: ObjectDefinition<unknown, unknown>, permission: P): Promise<boolean>;
+  principalHasPermission<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, permission: P): Promise<boolean>;
 
   getRelation<R>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<unknown, R>): Promise<R>
 
