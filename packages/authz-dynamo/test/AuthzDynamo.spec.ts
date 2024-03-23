@@ -2,7 +2,7 @@ import {getAuthZDefs} from "./test-helpers";
 import {AuthzDynamo} from "../src/AuthzDynamo";
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
 import {Org, User, Workspace} from "./test-model";
-import {GetCommand, PutCommand, QueryCommand} from "@aws-sdk/lib-dynamodb"
+import {GetCommand, PutCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb"
 import './toBeMatchingDynamoCommand';
 
 jest.mock('@aws-sdk/client-dynamodb')
@@ -80,6 +80,46 @@ describe('getPermissions', () => {
   })
 })
 
+describe('getRelation', () => {
+  test('should create right request to dynamo', async () => {
+    const principal = new User('user-id')
+    const resource = new Org('org-id')
+
+    const expectedDynamoCommand = new GetCommand({
+      TableName: TEST_TABLE,
+      Key: {
+        PK: `${principal.__typename}#${principal.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+      }
+    })
+
+    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+      Item: {
+        PK: `${principal.__typename}#${principal.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+        Relation: 'administrator'
+      }
+    }))
+    await authzDynamo.getRelation(principal, resource)
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+  })
+
+  test('should return correct relation', async () => {
+    const principal = new User('user-id')
+    const resource = new Org('org-id')
+
+    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+      Item: {
+        PK: `${principal.__typename}#${principal.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+        Relation: 'administrator'
+      }
+    }))
+    const relation = await authzDynamo.getRelation(principal, resource)
+    expect(relation).toEqual(Org.Relation.Administrator)
+  })
+})
+
 describe('getRelations', () => {
   test('should create right request to dynamo', async () => {
     const first = 10
@@ -102,7 +142,10 @@ describe('getRelations', () => {
         PK: `${relationObject.__typename}#${relationObject.id}`,
         SK: `${resource.__typename}#${resource.id}`,
       }],
-      LastEvaluatedKey: {PK: `${relationObject.__typename}#${relationObject.id}`, SK: `${resource.__typename}#${resource.id}`},
+      LastEvaluatedKey: {
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`
+      },
     }))
     await authzDynamo.getRelations(resource, first)
 
@@ -133,7 +176,10 @@ describe('getRelations', () => {
         PK: `${relationObject.__typename}#${relationObject.id}`,
         SK: `${resource.__typename}#${resource.id}`,
       }],
-      LastEvaluatedKey: {PK: `${relationObject.__typename}#${relationObject.id}`, SK: `${resource.__typename}#${resource.id}`},
+      LastEvaluatedKey: {
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`
+      },
     }))
     await authzDynamo.getRelations(resource, first, btoa(`${relationObject.__typename}#${relationObject.id}`))
 
@@ -150,7 +196,10 @@ describe('getRelations', () => {
         SK: `${resource.__typename}#${resource.id}`,
         Relation: 'member'
       }],
-      LastEvaluatedKey: {PK: `${relationObject.__typename}#${relationObject.id}`, SK: `${resource.__typename}#${resource.id}`},
+      LastEvaluatedKey: {
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`
+      },
     }))
     const relations = await authzDynamo.getRelations(resource, 10)
 
@@ -300,6 +349,55 @@ describe('getRelations', () => {
         })
       })
       await authzDynamo.principalHasPermission(principal, resource, Workspace.Permission.Administer)
+    })
+  })
+
+  describe('removeAllObjectRelations', () => {
+    test('should create right requests to dynamo', async () => {
+      const nItems = 500
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      const expectedQueryCommand = new QueryCommand({
+        TableName: TEST_TABLE,
+        IndexName: "RolesByResource",
+        KeyConditionExpression: "SK = :sk",
+        ExpressionAttributeValues: {
+          ":sk": `${resource.__typename}#${resource.id}`,
+        },
+        Limit: nItems,
+        ExclusiveStartKey: undefined,
+      })
+
+      const expectedDeleteCommand = new TransactWriteCommand({
+        TransactItems: [{
+          Delete: {
+            TableName: TEST_TABLE,
+            Key: {
+              PK: { S: `${principal.__typename}#${principal.id}` },
+              SK: { S: `${resource.__typename}#${resource.id}` },
+            }
+          }
+        }]
+      })
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Items: [{
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+        }],
+        LastEvaluatedKey: {
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`
+        },
+      }))
+
+      await authzDynamo.removeAllObjectRelations(resource)
+
+      expect(DynamoDBClient.prototype.send).toHaveBeenCalledTimes(2)
+      expect(DynamoDBClient.prototype.send).toHaveBeenLastCalledWith(
+          expect.toBeMatchingDynamoCommand(expectedDeleteCommand),
+      )
     })
   })
 })

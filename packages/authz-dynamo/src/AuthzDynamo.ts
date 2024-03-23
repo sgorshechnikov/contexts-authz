@@ -1,6 +1,6 @@
 import {Authz, ObjectDefinition, ObjectRelations} from '@contexts-authz/authz-model';
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
-import {GetCommand, PutCommand, QueryCommand} from "@aws-sdk/lib-dynamodb";
+import {GetCommand, PutCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb";
 import {
   AuthzModel,
   buildAst,
@@ -94,7 +94,7 @@ export class AuthzDynamo implements Authz {
       throw new Error(`Failed to fetch relations for entity ${resource.__typename}#${resource.id}`)
     } else {
       const cursor = btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK)
-      return  {
+      return {
         resource: resource,
         relations: data.Items.map((item: Record<string, NativeAttributeValue>) => {
           return {
@@ -107,6 +107,29 @@ export class AuthzDynamo implements Authz {
         }),
         cursor: cursor,
       }
+    }
+  }
+
+  async getRelation<R>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<unknown, R>): Promise<R> {
+    const typeDefinition = requireTypeDefinition(resource.__typename, this.model.definitions)
+    const command = new GetCommand({
+      TableName: this.config.tableName,
+      Key: {
+        PK: `${principal.__typename}#${principal.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+      }
+    })
+
+    const result: Record<string, NativeAttributeValue> = await this.dynamoClient.send(command)
+    if (!result || !result.Item) {
+      throw new Error(`Failed to fetch relation for principal ${principal.__typename}#${principal.id} and resource ${resource.__typename}#${resource.id}`)
+    } else {
+      const relation: string = result.Item.Relation
+      if (!applicableRelations(principal.__typename, typeDefinition).includes(relation)) {
+        throw new Error(`Invalid relation: ${principal.__typename}#${principal.id} -> ${resource.__typename}#${resource.id}: ${relation}`)
+      }
+
+      return relation as R
     }
   }
 
@@ -151,6 +174,24 @@ export class AuthzDynamo implements Authz {
   async principalHasPermission<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, permission: P): Promise<boolean> {
     const permissions = await this.getPermissions(principal, resource)
     return permissions.includes(permission)
+  }
+
+  async removeAllObjectRelations(object: ObjectDefinition<unknown, unknown>): Promise<void> {
+    //TODO: Fix this
+    const relationsToDelete = await this.getRelations(object, 500)
+    const command = new TransactWriteCommand({
+      TransactItems: relationsToDelete.relations.map((relation) => ({
+        Delete: {
+          TableName: this.config.tableName,
+          Key: {
+            PK: { S: `${relation.object.__typename}#${relation.object.id}` },
+            SK: { S: `${relationsToDelete.resource.__typename}#${relationsToDelete.resource.id}` },
+          }
+        }
+      }))
+    })
+
+    await this.dynamoClient.send(command)
   }
 
 }
