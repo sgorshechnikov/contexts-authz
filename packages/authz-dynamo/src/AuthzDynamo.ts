@@ -1,4 +1,4 @@
-import {Authz, ObjectDefinition, ResourceRelations} from '@contexts-authz/authz-model';
+import {Authz, ObjectDefinition, ObjectRelations} from '@contexts-authz/authz-model';
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
 import {GetCommand, PutCommand, QueryCommand} from "@aws-sdk/lib-dynamodb";
 import {
@@ -72,21 +72,20 @@ export class AuthzDynamo implements Authz {
     }
   }
 
-  async getRelations<R>(resource: ObjectDefinition<unknown, R>, first: number, after: string): Promise<ResourceRelations<R>> {
+  async getRelations<R>(resource: ObjectDefinition<unknown, R>, first: number, after?: string): Promise<ObjectRelations<R>> {
     requireTypeDefinition(resource.__typename, this.model.definitions)
 
     const command = new QueryCommand({
       TableName: this.config.tableName,
       IndexName: "RolesByResource",
-      KeyConditionExpression: "SK = :sk AND begins_with(PK, :pk)",
+      KeyConditionExpression: "SK = :sk",
       ExpressionAttributeValues: {
         ":sk": `${resource.__typename}#${resource.id}`,
-        ":pk": "relation#",
       },
       Limit: first,
       ExclusiveStartKey: after ? {
         SK: `${resource.__typename}#${resource.id}`,
-        PK: `relation#${btoa(after)}`
+        PK: atob(after)
       } : undefined
     })
 
@@ -94,14 +93,14 @@ export class AuthzDynamo implements Authz {
     if (!data || !data.Items) {
       throw new Error(`Failed to fetch relations for entity ${resource.__typename}#${resource.id}`)
     } else {
-      const cursor = atob((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK.split('#')[0])
+      const cursor = btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK)
       return  {
         resource: resource,
         relations: data.Items.map((item: Record<string, NativeAttributeValue>) => {
           return {
             object: {
-              __typename: item.PK.split('#')[1],
-              id: item.PK.split('#')[2],
+              __typename: item.PK.split('#')[0],
+              id: item.PK.split('#')[1],
             } as ObjectDefinition<unknown, unknown>,
             relation: item.Relation as R,
           }
@@ -111,31 +110,45 @@ export class AuthzDynamo implements Authz {
     }
   }
 
-  async getRelationForPrincipal<R>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<unknown, R>): Promise<R | undefined> {
-    const typeDefinition = requireTypeDefinition(resource.__typename, this.model.definitions)
-
-    const command = new GetCommand({
+  async getRelationsForPrincipal(principal: ObjectDefinition<unknown, unknown>, resourceType: string, first: number, after?: string): Promise<ObjectRelations<unknown>> {
+    const command = new QueryCommand({
       TableName: this.config.tableName,
-      Key: {
+      KeyConditionExpression: "PK = :sk AND begins_with(SK, :pk)",
+      ExpressionAttributeValues: {
+        ":pk": `${principal.__typename}#${principal.id}`,
+        ":sk": `${resourceType}#`,
+      },
+      Limit: first,
+      ExclusiveStartKey: after ? {
         PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }
+        SK: atob(after)
+      } : undefined
     })
 
-    const result: Record<string, NativeAttributeValue> = await this.dynamoClient.send(command)
-    if (!result || !result.Item) {
-      return undefined
-    } else {
-      const relation: string = result.Item.Relation
-      if (!applicableRelations(principal.__typename, typeDefinition).includes(relation)) {
-        return undefined
-      }
+    const data = await this.dynamoClient.send(command)
 
-      return relation as R
+    if (!data || !data.Items) {
+      throw new Error(`Failed to fetch relations for principal ${principal.__typename}#${principal.id}`)
+    } else {
+      const cursor = btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).SK)
+      return {
+        resource: principal,
+        relations: data.Items.map((item: Record<string, NativeAttributeValue>) => {
+          return {
+            object: {
+              __typename: item.SK.split('#')[0],
+              id: item.SK.split('#')[1],
+            } as ObjectDefinition<unknown, unknown>,
+            relation: item.Relation as unknown,
+          }
+        }),
+        cursor: cursor,
+      }
     }
+
   }
 
-  async principalHasPermission<P>(principal: ObjectDefinition<P, unknown>, resource: ObjectDefinition<unknown, unknown>, permission: P): Promise<boolean> {
+  async principalHasPermission<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, permission: P): Promise<boolean> {
     const permissions = await this.getPermissions(principal, resource)
     return permissions.includes(permission)
   }

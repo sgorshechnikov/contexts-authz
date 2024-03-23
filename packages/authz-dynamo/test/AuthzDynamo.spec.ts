@@ -2,7 +2,7 @@ import {getAuthZDefs} from "./test-helpers";
 import {AuthzDynamo} from "../src/AuthzDynamo";
 import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
 import {Org, User, Workspace} from "./test-model";
-import {GetCommand, PutCommand} from "@aws-sdk/lib-dynamodb"
+import {GetCommand, PutCommand, QueryCommand} from "@aws-sdk/lib-dynamodb"
 import './toBeMatchingDynamoCommand';
 
 jest.mock('@aws-sdk/client-dynamodb')
@@ -77,5 +77,229 @@ describe('getPermissions', () => {
     })
     const result = await authzDynamo.getPermissions(principal, resource)
     expect(result).toEqual([Workspace.Permission.Edit, Workspace.Permission.View])
+  })
+})
+
+describe('getRelations', () => {
+  test('should create right request to dynamo', async () => {
+    const first = 10
+    const resource = new Org('org-id')
+    const relationObject = new User('user-id')
+
+    const expectedDynamoCommand = new QueryCommand({
+      TableName: TEST_TABLE,
+      IndexName: "RolesByResource",
+      KeyConditionExpression: "SK = :sk",
+      ExpressionAttributeValues: {
+        ":sk": `${resource.__typename}#${resource.id}`,
+      },
+      Limit: first,
+      ExclusiveStartKey: undefined,
+    })
+
+    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+      Items: [{
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+      }],
+      LastEvaluatedKey: {PK: `${relationObject.__typename}#${relationObject.id}`, SK: `${resource.__typename}#${resource.id}`},
+    }))
+    await authzDynamo.getRelations(resource, first)
+
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+  })
+
+  test('should create right paginated request to dynamo', async () => {
+    const first = 10
+    const resource = new Org('org-id')
+    const relationObject = new User('user-id')
+
+    const expectedDynamoCommand = new QueryCommand({
+      TableName: TEST_TABLE,
+      IndexName: "RolesByResource",
+      KeyConditionExpression: "SK = :sk",
+      ExpressionAttributeValues: {
+        ":sk": `${resource.__typename}#${resource.id}`,
+      },
+      Limit: first,
+      ExclusiveStartKey: {
+        SK: `${resource.__typename}#${resource.id}`,
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+      },
+    })
+
+    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+      Items: [{
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+      }],
+      LastEvaluatedKey: {PK: `${relationObject.__typename}#${relationObject.id}`, SK: `${resource.__typename}#${resource.id}`},
+    }))
+    await authzDynamo.getRelations(resource, first, btoa(`${relationObject.__typename}#${relationObject.id}`))
+
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+  })
+
+  test('should return the relations', async () => {
+    const resource = new Org('org-id')
+    const relationObject = new User('user-id')
+
+    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+      Items: [{
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+        Relation: 'member'
+      }],
+      LastEvaluatedKey: {PK: `${relationObject.__typename}#${relationObject.id}`, SK: `${resource.__typename}#${resource.id}`},
+    }))
+    const relations = await authzDynamo.getRelations(resource, 10)
+
+    const expectedRelations = {
+      resource: resource,
+      cursor: btoa(`${relationObject.__typename}#${relationObject.id}`),
+      relations: [{
+        object: {
+          id: relationObject.id,
+          __typename: relationObject.__typename,
+        },
+        relation: 'member',
+      }]
+    }
+    expect(relations).toEqual(expectedRelations)
+  })
+
+  describe('getRelationsForPrincipal', () => {
+    test('should create right request to dynamo', async () => {
+      const first = 10
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      const expectedDynamoCommand = new QueryCommand({
+        TableName: TEST_TABLE,
+        KeyConditionExpression: "PK = :sk AND begins_with(SK, :pk)",
+        ExpressionAttributeValues: {
+          ":pk": `${principal.__typename}#${principal.id}`,
+          ":sk": `${resource.__typename}#`,
+        },
+        Limit: first,
+        ExclusiveStartKey: undefined,
+      })
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Items: [{
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+        }],
+        LastEvaluatedKey: {PK: `${principal.__typename}#${principal.id}`, SK: `${resource.__typename}#${resource.id}`},
+      }))
+      await authzDynamo.getRelationsForPrincipal(principal, resource.__typename, first)
+
+      expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+    })
+
+    test('should create right paginated request to dynamo', async () => {
+      const first = 10
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      const expectedDynamoCommand = new QueryCommand({
+        TableName: TEST_TABLE,
+        KeyConditionExpression: "PK = :sk AND begins_with(SK, :pk)",
+        ExpressionAttributeValues: {
+          ":pk": `${principal.__typename}#${principal.id}`,
+          ":sk": `${resource.__typename}#`,
+        },
+        Limit: first,
+        ExclusiveStartKey: {
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+        },
+      })
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Items: [{
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+        }],
+        LastEvaluatedKey: {PK: `${principal.__typename}#${principal.id}`, SK: `${resource.__typename}#${resource.id}`},
+      }))
+      await authzDynamo.getRelationsForPrincipal(principal, resource.__typename, first, btoa(`${resource.__typename}#${resource.id}`))
+
+      expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+    })
+
+    test('should return the permissions', async () => {
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Items: [{
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+          Relation: 'member'
+        }],
+        LastEvaluatedKey: {PK: `${principal.__typename}#${principal.id}`, SK: `${resource.__typename}#${resource.id}`},
+      }))
+      const relations = await authzDynamo.getRelationsForPrincipal(principal, resource.__typename, 10, btoa(`${resource.__typename}#${resource.id}`))
+
+      expect(relations).toEqual({
+        resource: principal,
+        cursor: btoa(`${resource.__typename}#${resource.id}`),
+        relations: [{
+          object: {
+            id: resource.id,
+            __typename: resource.__typename,
+          },
+          relation: 'member',
+        }]
+      })
+    })
+  })
+
+  describe('principalHasPermission', () => {
+    test('should create right request to dynamo', async () => {
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      const expectedDynamoCommand = new GetCommand({
+        TableName: TEST_TABLE,
+        Key: {
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+        }
+      })
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({}))
+      await authzDynamo.principalHasPermission(principal, resource, Org.Permission.Administer)
+      expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
+    })
+
+    test('should return true when the user has the permission', async () => {
+      const principal = new User('user-id')
+      const resource = new Workspace('workspace-id')
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => {
+        return Promise.resolve({
+          Item: {
+            Relation: 'member'
+          }
+        })
+      })
+      await authzDynamo.principalHasPermission(principal, resource, Workspace.Permission.Edit)
+    })
+
+    test('should return false when the user does not have the permission', async () => {
+      const principal = new User('user-id')
+      const resource = new Workspace('workspace-id')
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => {
+        return Promise.resolve({
+          Item: {
+            Relation: 'member'
+          }
+        })
+      })
+      await authzDynamo.principalHasPermission(principal, resource, Workspace.Permission.Administer)
+    })
   })
 })
