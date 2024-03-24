@@ -169,6 +169,10 @@ export class AuthzDynamo implements Authz {
   }
 
   async getPrincipalRelationsForEntities<R>(principal: ObjectDefinition<unknown, unknown>, resources: ObjectDefinition<unknown, R>[]): Promise<ObjectRelation<R>[]> {
+    if (resources.length === 0) {
+      return Promise.resolve([])
+    }
+
     const command = new BatchGetCommand({
       RequestItems: {
         [this.config.tableName]: {

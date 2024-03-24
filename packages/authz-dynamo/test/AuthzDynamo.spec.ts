@@ -308,6 +308,14 @@ describe('getRelations', () => {
   })
 
   describe('getPrincipalRelationsForEntities', () => {
+    test('should not make any requests if there are no resources', async () => {
+      const principal = new User('user-id')
+
+      const relations = await authzDynamo.getPrincipalRelationsForEntities(principal, [])
+      expect(relations).toEqual([])
+      expect(DynamoDBClient.prototype.send).not.toHaveBeenCalled()
+    })
+
     test('should create right request to dynamo', async () => {
       const principal = new User('user-id')
       const resource = new Org('org-id')
