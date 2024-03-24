@@ -3,7 +3,6 @@ import {
   Permission,
   PermissionExpression,
   Relation,
-  RelationExpression,
   TypeDefinition
 } from "@contexts-authz/authz-grammar";
 import _ from "lodash";
