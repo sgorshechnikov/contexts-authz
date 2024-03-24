@@ -102,7 +102,7 @@ export class AuthzDynamo implements Authz {
             cursor: btoa(item.PK),
           }
         }),
-        cursor: btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK),
+        cursor: data.LastEvaluatedKey ? btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).PK) : undefined,
       }
     }
   }
@@ -162,7 +162,7 @@ export class AuthzDynamo implements Authz {
             cursor: btoa(item.SK),
           }
         }),
-        cursor: btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).SK),
+        cursor: data.LastEvaluatedKey ? btoa((data.LastEvaluatedKey as Record<string, NativeAttributeValue>).SK) : undefined,
       }
     }
 

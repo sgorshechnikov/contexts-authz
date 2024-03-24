@@ -4,8 +4,12 @@ export interface ObjectDefinition<Permission = void, Relation = void> {
   __typename: string;
 }
 
-export type Paginated = {
+export type WithCursor = {
   cursor: string
+}
+
+export type Paginated = {
+  cursor?: string
 }
 
 export type ObjectRelation<R> = {
@@ -15,5 +19,5 @@ export type ObjectRelation<R> = {
 
 export type ObjectRelations<R> = Paginated & {
   resource: ObjectDefinition<unknown, R>,
-  relations: (ObjectRelation<R> & Paginated)[]
+  relations: (ObjectRelation<R> & WithCursor)[]
 }
