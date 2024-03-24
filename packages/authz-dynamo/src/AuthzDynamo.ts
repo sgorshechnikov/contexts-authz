@@ -133,7 +133,7 @@ export class AuthzDynamo implements Authz {
   async getRelationsForPrincipal(principal: ObjectDefinition<unknown, unknown>, resourceType: string, first: number, after?: string): Promise<ObjectRelations<unknown>> {
     const command = new QueryCommand({
       TableName: this.config.tableName,
-      KeyConditionExpression: "PK = :sk AND begins_with(SK, :pk)",
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
       ExpressionAttributeValues: {
         ":pk": `${principal.__typename}#${principal.id}`,
         ":sk": `${resourceType}#`,
@@ -213,8 +213,8 @@ export class AuthzDynamo implements Authz {
           Delete: {
             TableName: this.config.tableName,
             Key: {
-              PK: {S: `${relation.principal.__typename}#${relation.principal.id}`},
-              SK: {S: `${relation.resource.__typename}#${relation.resource.id}`},
+              PK: `${relation.principal.__typename}#${relation.principal.id}`,
+              SK: `${relation.resource.__typename}#${relation.resource.id}`,
             }
           }
         }
@@ -232,8 +232,8 @@ export class AuthzDynamo implements Authz {
         Delete: {
           TableName: this.config.tableName,
           Key: {
-            PK: {S: `${relation.object.__typename}#${relation.object.id}`},
-            SK: {S: `${relationsToDelete.resource.__typename}#${relationsToDelete.resource.id}`},
+            PK: `${relation.object.__typename}#${relation.object.id}`,
+            SK: `${relationsToDelete.resource.__typename}#${relationsToDelete.resource.id}`,
           }
         }
       }))

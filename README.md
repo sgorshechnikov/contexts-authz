@@ -81,7 +81,7 @@ It expects the following schema for permissions:
 `PK` of type String as Hash Key and 
 `SK` of type String as Sort Key
 
-Global Secondary Index named `RolesByResource` with `SK` as Hash Key and `PK` as Sort Key
+Global Secondary Index named `RolesByResource` with `SK` as Hash Key and `PK` as Sort Key and included non-key attribute `Relation`
 
 Example terraform code to create the table:
 
@@ -107,7 +107,7 @@ resource "aws_dynamodb_table" "contexts_permissions" {
     hash_key           = "SK"
     range_key          = "PK"
     projection_type    = "INCLUDE"
-    non_key_attributes = ["Role"]
+    non_key_attributes = ["Relation"]
   }
 }
 ```

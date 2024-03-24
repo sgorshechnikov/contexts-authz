@@ -226,7 +226,7 @@ describe('getRelations', () => {
 
       const expectedDynamoCommand = new QueryCommand({
         TableName: TEST_TABLE,
-        KeyConditionExpression: "PK = :sk AND begins_with(SK, :pk)",
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
         ExpressionAttributeValues: {
           ":pk": `${principal.__typename}#${principal.id}`,
           ":sk": `${resource.__typename}#`,
@@ -254,7 +254,7 @@ describe('getRelations', () => {
 
       const expectedDynamoCommand = new QueryCommand({
         TableName: TEST_TABLE,
-        KeyConditionExpression: "PK = :sk AND begins_with(SK, :pk)",
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
         ExpressionAttributeValues: {
           ":pk": `${principal.__typename}#${principal.id}`,
           ":sk": `${resource.__typename}#`,
@@ -424,8 +424,8 @@ describe('getRelations', () => {
           Delete: {
             TableName: TEST_TABLE,
             Key: {
-              PK: { S: `${principal.__typename}#${principal.id}` },
-              SK: { S: `${resource.__typename}#${resource.id}` },
+              PK: `${principal.__typename}#${principal.id}`,
+              SK: `${resource.__typename}#${resource.id}`,
             }
           }
         }]
@@ -462,8 +462,8 @@ describe('getRelations', () => {
           Delete: {
             TableName: TEST_TABLE,
             Key: {
-              PK: { S: `${principal.__typename}#${principal.id}` },
-              SK: { S: `${resource.__typename}#${resource.id}` },
+              PK: `${principal.__typename}#${principal.id}`,
+              SK: `${resource.__typename}#${resource.id}`,
             }
           }
         }]
