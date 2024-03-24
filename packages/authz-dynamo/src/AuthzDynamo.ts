@@ -107,7 +107,7 @@ export class AuthzDynamo implements Authz {
     }
   }
 
-  async getRelation<R>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<unknown, R>): Promise<R> {
+  async getRelation<R>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<unknown, R>): Promise<R | undefined> {
     const typeDefinition = requireTypeDefinition(resource.__typename, this.model.definitions)
     const command = new GetCommand({
       TableName: this.config.tableName,
@@ -119,7 +119,7 @@ export class AuthzDynamo implements Authz {
 
     const result: Record<string, NativeAttributeValue> = await this.dynamoClient.send(command)
     if (!result || !result.Item) {
-      throw new Error(`Failed to fetch relation for principal ${principal.__typename}#${principal.id} and resource ${resource.__typename}#${resource.id}`)
+      return undefined
     } else {
       const relation: string = result.Item.Relation
       if (!applicableRelations(principal.__typename, typeDefinition).includes(relation)) {
@@ -200,6 +200,24 @@ export class AuthzDynamo implements Authz {
   async principalHasPermission<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, permission: P): Promise<boolean> {
     const permissions = await this.getPermissions(principal, resource)
     return permissions.includes(permission)
+  }
+
+  async removeRelations(relations: {principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<unknown, unknown>}[]): Promise<void> {
+    const command = new TransactWriteCommand({
+      TransactItems: relations.map(relation => {
+        return {
+          Delete: {
+            TableName: this.config.tableName,
+            Key: {
+              PK: {S: `${relation.principal.__typename}#${relation.principal.id}`},
+              SK: {S: `${relation.resource.__typename}#${relation.resource.id}`},
+            }
+          }
+        }
+      })
+    })
+
+    await this.dynamoClient.send(command)
   }
 
   async removeAllObjectRelations(object: ObjectDefinition<unknown, unknown>): Promise<void> {

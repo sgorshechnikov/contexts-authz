@@ -34,7 +34,9 @@ describe('AuthZTypesGenerator', () => {
       
       definition group {
         relation owner: user
-        permission view = user
+        relation guest: user
+        
+        permission view = owner + guest
       }
     `
     const ast = buildAst(input)
@@ -64,7 +66,17 @@ describe('AuthZTypesGenerator', () => {
         }
         
         export enum Relation {
-          Owner = "owner",
+            Owner = "owner",
+            Guest = "guest",
+        }
+        
+        export function hasPermission(relation: Relation, permission: Permission): boolean {
+            switch (permission) {
+                case Permission.View:
+                    return [Relation.Owner, Relation.Guest].includes(relation);
+                default:
+                    return false;
+            }
         }
       }
     `

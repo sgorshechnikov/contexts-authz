@@ -406,6 +406,44 @@ describe('getRelations', () => {
     })
   })
 
+  describe('removeRelations', () => {
+    test('should create right requests to dynamo', async () => {
+      const principal = new User('user-id')
+      const resource = new Org('org-id')
+
+      const expectedDeleteCommand = new TransactWriteCommand({
+        TransactItems: [{
+          Delete: {
+            TableName: TEST_TABLE,
+            Key: {
+              PK: { S: `${principal.__typename}#${principal.id}` },
+              SK: { S: `${resource.__typename}#${resource.id}` },
+            }
+          }
+        }]
+      })
+
+      jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+        Items: [{
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`,
+        }],
+        LastEvaluatedKey: {
+          PK: `${principal.__typename}#${principal.id}`,
+          SK: `${resource.__typename}#${resource.id}`
+        },
+      }))
+
+      await authzDynamo.removeRelations([
+        { principal, resource }
+      ])
+
+      expect(DynamoDBClient.prototype.send).toHaveBeenLastCalledWith(
+          expect.toBeMatchingDynamoCommand(expectedDeleteCommand),
+      )
+    })
+  })
+
   describe('removeAllObjectRelations', () => {
     test('should create right requests to dynamo', async () => {
       const principal = new User('user-id')
