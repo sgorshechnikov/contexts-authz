@@ -13,9 +13,9 @@ definition workspace {
   relation member: user
   relation guest: user
 
-  permission administer = administrator + owner.admin
-  permission edit = administrator + owner.admin + member
-  permission view = administrator + owner.admin + member + guest
+  permission administer = administrator + owner.administer
+  permission edit = administrator + owner.administer + member
+  permission view = administrator + owner.administer + member + guest
 }
 
 definition document {
@@ -24,7 +24,8 @@ definition document {
   relation member: user
   relation guest: user
 
-  permission delete = owner + owner.admin
-  permission edit = owner + owner.admin + member
-  permission view = owner + owner.admin + member + guest
+  permission administer = owner.administer
+  permission delete = owner + owner.administer
+  permission edit = owner + owner.administer + member
+  permission view = owner + owner.administer + member + guest
 }

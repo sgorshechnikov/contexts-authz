@@ -74,6 +74,7 @@ export namespace Document {
     Delete = "delete",
     Edit = "edit",
     View = "view",
+    Administer = "administer",
   }
 
   export enum Relation {
