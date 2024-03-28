@@ -1,4 +1,4 @@
-import {ObjectDefinition, ObjectRelation, ObjectRelations, ObjectsRelation} from "./authz-types";
+import {ObjectDefinition, ObjectRelation, ObjectRelations, ObjectsRelation, ObjectPermissions} from "./authz-types";
 
 export interface Authz {
   principalHasPermission<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, permission: P): Promise<boolean>;
@@ -10,6 +10,16 @@ export interface Authz {
   getPrincipalRelationsForEntities<R>(principal: ObjectDefinition<unknown, unknown>, resources: ObjectDefinition<unknown, R>[]): Promise<ObjectRelation<R>[]>;
 
   getPermissions<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>): Promise<P[]>;
+
+  getPrincipalPermissionsForEntities<P, R>(
+      principal: ObjectDefinition<unknown, unknown>,
+      resources: ObjectDefinition<P, R>[],
+      transitiveResources: {
+        source: ObjectDefinition<unknown, unknown>,
+        relation: R,
+      }[],
+      requestedPermissions: P[]
+  ): Promise<ObjectPermissions<P>[]>;
 
   getRelations<R>(resource: ObjectDefinition<unknown, R>, first: number, after?: string): Promise<ObjectRelations<R>>;
 

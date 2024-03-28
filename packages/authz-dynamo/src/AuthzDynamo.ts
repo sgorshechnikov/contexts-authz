@@ -1,6 +1,6 @@
 import {
   Authz,
-  ObjectDefinition,
+  ObjectDefinition, ObjectPermissions,
   ObjectRelation,
   ObjectRelations,
   ObjectsRelation
@@ -11,7 +11,7 @@ import {AuthzModel, buildAst,} from "@contexts-authz/authz-grammar";
 import {NativeAttributeValue} from "@aws-sdk/util-dynamodb";
 import {
   applicableRelations,
-  permissionsForRelation,
+  permissionsForRelation, PossiblePermission,
   possiblePermissionsForPrincipal,
   requireTypeDefinition
 } from "./util";
@@ -271,6 +271,181 @@ export class AuthzDynamo implements Authz {
             id: item.SK.split('#')[1],
           } as ObjectDefinition<unknown, unknown>,
           relation: item.Relation as R,
+        }
+      })
+    }
+  }
+
+  async getPrincipalPermissionsForEntities<P, R>(
+      principal: ObjectDefinition<unknown, unknown>,
+      resources: ObjectDefinition<P, R>[],
+      transitiveResources: {
+        source: ObjectDefinition<unknown, unknown>,
+        relation: R,
+      }[],
+      requestedPermissions: P[]
+  ): Promise<ObjectPermissions<P>[]> {
+
+    if (resources.length === 0) {
+      return Promise.resolve([])
+    }
+
+    const resourcesType = resources[0].__typename
+
+    if (!resources.every(resource => resource.__typename === resourcesType)) {
+      throw new Error('All resources must be of the same type')
+    }
+
+    const typeDefinition = requireTypeDefinition(resourcesType, this.model.definitions)
+
+    const possiblePermissions = possiblePermissionsForPrincipal(principal.__typename, resourcesType, this.model.definitions).filter((permission) => {
+      return requestedPermissions === undefined || requestedPermissions.includes(permission.name as P)
+    })
+
+    if (possiblePermissions.length === 0) {
+      return []
+    }
+
+    const possibleTransitivePermissions = possiblePermissions.filter((permission) => {
+      return permission.type === 'transitive'
+    })
+
+    const loadTransitiveRelations: Promise<ObjectsRelation<unknown>[]> = Promise.all(_.uniqWith(possibleTransitivePermissions.map((permission) => {
+      return permission.transitiveRelation
+    }), _.isEqual).flatMap((relation) => {
+      if (relation) {
+        const relationName = relation.relationName
+        const transitiveRelationsToVerify = transitiveResources.filter((relation) => {
+          return relation.relation === relationName
+        })
+        return transitiveRelationsToVerify.map(async (relation) => {
+          return await this.resolveRelations(resources.map((resource) => {
+            return {
+              source: relation.source,
+              target: resource,
+            }
+          }))
+        })
+      }
+      return []
+    })).then((relations) => relations.flat())
+
+    const command = new BatchGetCommand({
+      RequestItems: {
+        [this.config.tableName]: {
+          Keys: resources.map(resource => ({
+            PK: `${principal.__typename}#${principal.id}`,
+            SK: `${resource.__typename}#${resource.id}`,
+          }))
+        }
+      }
+    })
+
+    const [data, transitiveRelations] = await Promise.all([
+      this.dynamoClient.send(command),
+      loadTransitiveRelations
+    ])
+
+    if (!data || !data.Responses || !data.Responses[this.config.tableName]) {
+      throw new Error(`Failed to fetch permissions for principal ${principal.__typename}#${principal.id}`)
+    }
+
+    const directPermissions: ObjectPermissions<P>[] = data.Responses[this.config.tableName].map((item: Record<string, NativeAttributeValue>) => {
+      return {
+        resource: {
+          __typename: item.SK.split('#')[0],
+          id: item.SK.split('#')[1],
+        } as ObjectDefinition<unknown, unknown>,
+        permissions: permissionsForRelation(item.Relation, typeDefinition) as P[],
+      }
+    })
+
+    const allResolved = (permissions: ObjectPermissions<P>[]) => resources.every(resource =>
+        permissions.some((permission) =>
+            permission.resource.id === resource.id && requestedPermissions.every((requestedPermission) => permission.permissions.includes(requestedPermission))
+        )
+    )
+
+    if (allResolved(directPermissions)) {
+      return directPermissions.map((permission) => {
+        return {
+          ...permission,
+          permissions: permission.permissions.filter((permission) => requestedPermissions.includes(permission))
+        }
+      }) as ObjectPermissions<P>[]
+    }
+
+    const transitiveResourcesPermissions = await this.getPrincipalPermissionsForEntities(
+        principal,
+        transitiveRelations.map((relation) => relation.source),
+        transitiveResources.filter((resource) => {
+          return !transitiveRelations.some((relation) => {
+            return relation.relation === resource.relation && relation.source.__typename === resource.source.__typename
+          })
+        }),
+        possibleTransitivePermissions.map((permission) => permission.transitiveRelation?.targetPermission as P))
+
+    const transitivePermissions = resources.flatMap((resource) => {
+      return possibleTransitivePermissions.flatMap((permission: PossiblePermission) => {
+        const matchingPermission = transitiveRelations.some((relation) => {
+          const transitivePermission = transitiveResourcesPermissions.find((permission) => {
+            return permission.resource.id === relation.source.id
+          })
+          return transitivePermission && relation.target.id === resource.id &&
+              relation.relation === permission.transitiveRelation?.relationName &&
+              transitivePermission.permissions.includes(permission.transitiveRelation?.targetPermission)
+        })
+
+        if (matchingPermission) {
+          return [{
+            resource: resource,
+            permissions: [permission.name as P]
+          }]
+        }
+        return []
+      })
+    })
+
+    const allPermissions =
+        Object.entries(_.groupBy(directPermissions.concat(transitivePermissions), (permission) => permission.resource.id))
+            .map(([, permissions]) => permissions.reduce((acc, permission) => {
+              return {
+                resource: permission.resource,
+                permissions: _.uniq(acc.permissions.concat(permission.permissions))
+              }
+            }))
+
+    return [...allPermissions]
+  }
+
+  private async resolveRelations(pairs: { source: ObjectDefinition<unknown, unknown>, target: ObjectDefinition<unknown, unknown> }[]): Promise<ObjectsRelation<unknown>[]> {
+    const command = new BatchGetCommand({
+      RequestItems: {
+        [this.config.tableName]: {
+          Keys: pairs.map(pair => ({
+            PK: `${pair.source.__typename}#${pair.source.id}`,
+            SK: `${pair.target.__typename}#${pair.target.id}`,
+          }))
+        }
+      }
+    })
+
+    const data = await this.dynamoClient.send(command)
+
+    if (!data || !data.Responses || !data.Responses[this.config.tableName]) {
+      throw new Error(`Failed to fetch relations for ${pairs.length} object pairs.`)
+    } else {
+      return data.Responses[this.config.tableName].map((item: Record<string, NativeAttributeValue>) => {
+        return {
+          source: {
+            __typename: item.PK.split('#')[0],
+            id: item.PK.split('#')[1],
+          },
+          target: {
+            __typename: item.SK.split('#')[0],
+            id: item.SK.split('#')[1],
+          },
+          relation: item.Relation
         }
       })
     }

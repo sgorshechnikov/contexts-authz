@@ -437,6 +437,88 @@ describe('getPrincipalRelationsForEntities', () => {
   })
 })
 
+describe('getPrincipalPermissionsForEntities', () => {
+  test('should not make any requests if there are no resources', async () => {
+    const principal = new User('user-id')
+
+    const permissions = await authzDynamo.getPrincipalPermissionsForEntities(principal, [], [], [])
+    expect(permissions).toEqual([])
+    expect(DynamoDBClient.prototype.send).not.toHaveBeenCalled()
+  })
+
+  test('should resolve direct permissions', async () => {
+    const principal = new User('user-id')
+    const document = new Document('document-id')
+    const document1 = new Document('document-id-1')
+
+    mockDbRelations([
+      {source: principal, target: document, relation: 'guest'},
+      {source: principal, target: document1, relation: 'owner'},
+    ])
+
+    const permissions = await authzDynamo.getPrincipalPermissionsForEntities(principal, [document, document1], [], [Document.Permission.View])
+
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledTimes(1)
+    expect(permissions).toEqual([{
+      resource: document,
+      permissions: [Document.Permission.View]
+    }, {
+      resource: document1,
+      permissions: [Document.Permission.View]
+    }])
+  })
+
+  test('should resolve transitive permissions', async () => {
+    const principal = new User('user-id')
+    const document = new Document('document-id')
+    const document1 = new Document('document-id-1')
+    const workspace = new Workspace('workspace-id')
+
+    mockDbRelations([
+      {source: principal, target: workspace, relation: 'administrator'},
+      {source: workspace, target: document, relation: 'owner'},
+      {source: workspace, target: document1, relation: 'owner'},
+    ])
+
+    const permissions = await authzDynamo.getPrincipalPermissionsForEntities(principal, [document, document1], [
+      { source: workspace, relation: Document.Relation.Owner }
+    ], [Document.Permission.View, Document.Permission.Edit])
+
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledTimes(3)
+    expect(permissions).toEqual([{
+      resource: document,
+      permissions: [Document.Permission.Edit, Document.Permission.View]
+    }, {
+      resource: document1,
+      permissions: [Document.Permission.Edit, Document.Permission.View]
+    }])
+  })
+
+  test('should resolve deep transitive permissions', async () => {
+    const principal = new User('user-id')
+    const document = new Document('document-id')
+    const workspace = new Workspace('workspace-id')
+    const org = new Org('org-id')
+
+    mockDbRelations([
+      {source: principal, target: org, relation: 'administrator'},
+      {source: org, target: workspace, relation: 'owner'},
+      {source: workspace, target: document, relation: 'owner'},
+    ])
+
+    const permissions = await authzDynamo.getPrincipalPermissionsForEntities(principal, [document], [
+      { source: workspace, relation: Document.Relation.Owner },
+      { source: org, relation: Workspace.Relation.Owner }
+    ], [Document.Permission.View, Document.Permission.Edit])
+
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledTimes(6)
+    expect(permissions).toEqual([{
+      resource: document,
+      permissions: [Document.Permission.Edit, Document.Permission.View]
+    }])
+  })
+})
+
 describe('principalHasPermission', () => {
   test('should create right request to dynamo', async () => {
     const principal = new User('user-id')
@@ -616,6 +698,42 @@ const mockDbRelations = (relations: ObjectsRelation<unknown>[]) => {
       }
 
       return Promise.resolve({})
+    }
+
+    if (arg.constructor.name === 'BatchGetCommand') {
+      const getInput = (arg as BatchGetCommand).input
+      const responses: {
+        [k: string]: {
+          PK: string,
+          SK: string,
+          Relation: string,
+        }[]
+      } = {}
+
+      relations.forEach((relation: ObjectsRelation<unknown>) => {
+        if (getInput.RequestItems) {
+          Object.entries(getInput.RequestItems).forEach((entry) => {
+            const tableName: string = entry[0]
+            if (entry[1].Keys) {
+              responses[tableName] = (responses[tableName] || []).concat(entry[1].Keys.flatMap((key) => {
+                if (key.PK === `${relation.source.__typename}#${relation.source.id}` &&
+                    key.SK === `${relation.target.__typename}#${relation.target.id}`) {
+                  return [{
+                    PK: `${relation.source.__typename}#${relation.source.id}`,
+                    SK: `${relation.target.__typename}#${relation.target.id}`,
+                    Relation: relation.relation as string,
+                  }]
+                }
+                return []
+              }))
+            }
+          })
+        }
+      })
+
+      return Promise.resolve({
+        Responses: responses,
+      })
     }
   })
 }
