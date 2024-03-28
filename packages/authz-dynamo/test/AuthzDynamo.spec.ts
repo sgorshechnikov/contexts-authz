@@ -481,7 +481,7 @@ describe('getPrincipalPermissionsForEntities', () => {
     ])
 
     const permissions = await authzDynamo.getPrincipalPermissionsForEntities(principal, [document, document1], [
-      { source: workspace, relation: Document.Relation.Owner }
+      {source: workspace, relation: Document.Relation.Owner}
     ], [Document.Permission.View, Document.Permission.Edit])
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledTimes(3)
@@ -507,8 +507,8 @@ describe('getPrincipalPermissionsForEntities', () => {
     ])
 
     const permissions = await authzDynamo.getPrincipalPermissionsForEntities(principal, [document], [
-      { source: workspace, relation: Document.Relation.Owner },
-      { source: org, relation: Workspace.Relation.Owner }
+      {source: workspace, relation: Document.Relation.Owner},
+      {source: org, relation: Workspace.Relation.Owner}
     ], [Document.Permission.View, Document.Permission.Edit])
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledTimes(6)
@@ -709,6 +709,18 @@ const mockDbRelations = (relations: ObjectsRelation<unknown>[]) => {
           Relation: string,
         }[]
       } = {}
+
+      if (getInput.RequestItems) {
+        Object.entries(getInput.RequestItems).forEach((entry) => {
+          if (entry[1].Keys) {
+            const keys = entry[1].Keys
+            const keySet = new Set(keys.map((key) => `${key.PK}#${key.SK}`))
+            if (keySet.size !== keys.length) {
+              throw new Error(`Provided list of item keys contains duplicates, ${JSON.stringify(getInput)}`)
+            }
+          }
+        })
+      }
 
       relations.forEach((relation: ObjectsRelation<unknown>) => {
         if (getInput.RequestItems) {

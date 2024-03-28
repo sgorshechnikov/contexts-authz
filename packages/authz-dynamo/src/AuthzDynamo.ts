@@ -377,7 +377,7 @@ export class AuthzDynamo implements Authz {
 
     const transitiveResourcesPermissions = await this.getPrincipalPermissionsForEntities(
         principal,
-        transitiveRelations.map((relation) => relation.source),
+        _.uniqWith(transitiveRelations.map((relation) => relation.source), _.isEqual),
         transitiveResources.filter((resource) => {
           return !transitiveRelations.some((relation) => {
             return relation.relation === resource.relation && relation.source.__typename === resource.source.__typename
