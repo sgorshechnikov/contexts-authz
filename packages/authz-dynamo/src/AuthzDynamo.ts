@@ -17,19 +17,40 @@ import {
 } from "./util";
 import _ from "lodash";
 
-type DbConfig = {
+type Logger = {
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  debug: (message: string, ...meta: any[]) => void,
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  error: (message: string, ...meta: any[]) => void,
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  warn: (message: string, ...meta: any[]) => void,
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  info: (message: string, ...meta: any[]) => void,
+}
+
+const noopLogger: Logger = {
+  debug: () => {},
+  error: () => {},
+  warn: () => {},
+  info: () => {},
+}
+
+type AuthzDynamoConfig = {
   tableName: string,
   authzDefinition: string,
+  logger?: Logger
 }
 
 export class AuthzDynamo implements Authz {
   private readonly model: AuthzModel
+  private readonly logger: Logger
 
   constructor(
       readonly dynamoClient: DynamoDBClient,
-      readonly config: DbConfig
+      readonly config: AuthzDynamoConfig
   ) {
     this.model = buildAst(config.authzDefinition)
+    this.logger = config.logger || noopLogger
   }
 
   async addRelations<R>(relations: ObjectsRelation<R>[]): Promise<void> {
@@ -52,10 +73,16 @@ export class AuthzDynamo implements Authz {
             }
           }
         }
-      })
+      }),
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const result = await this.dynamoClient.send(command)
+
+    this.logger.debug('Added relations', {
+      writtenRelations: relations.length,
+      consumedCapacity: result.ConsumedCapacity
+    })
 
     if (!result) {
       throw new Error(`Failed to create new relations: ${relations.map((relation) => `${relation.source.__typename}#${relation.source.id} -> ${relation.target.__typename}#${relation.target.id}: ${relation}`)}`)
@@ -99,13 +126,20 @@ export class AuthzDynamo implements Authz {
       Key: {
         PK: `${principal.__typename}#${principal.id}`,
         SK: `${resource.__typename}#${resource.id}`,
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const [result, transitiveRelations] = await Promise.all([
       this.dynamoClient.send(command),
       loadTransitiveRelations
     ])
+
+    this.logger.debug('Fetched permissions', {
+      principal: principal,
+      resource: resource,
+      consumedCapacity: result.ConsumedCapacity
+    })
 
     const directPermissions =
         (result?.Item && applicableRelations(principal.__typename, typeDefinition).includes(result.Item.Relation)) ?
@@ -158,10 +192,18 @@ export class AuthzDynamo implements Authz {
       ExclusiveStartKey: after ? {
         SK: `${resource.__typename}#${resource.id}`,
         PK: atob(after)
-      } : undefined
+      } : undefined,
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const data = await this.dynamoClient.send(command)
+
+    this.logger.debug('Fetched relations', {
+      resource: `${resource.__typename}#${resource.id}`,
+      resultsLength: data.Items?.length,
+      consumedCapacity: data.ConsumedCapacity
+    })
+
     if (!data || !data.Items) {
       throw new Error(`Failed to fetch relations for entity ${resource.__typename}#${resource.id}@#${principalType}`)
     } else {
@@ -189,10 +231,19 @@ export class AuthzDynamo implements Authz {
       Key: {
         PK: `${principal.__typename}#${principal.id}`,
         SK: `${resource.__typename}#${resource.id}`,
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const result: Record<string, NativeAttributeValue> = await this.dynamoClient.send(command)
+
+    this.logger.debug('Fetched relation', {
+      source: `${principal.__typename}#${principal.id}`,
+      target: `${resource.__typename}#${resource.id}`,
+      relation: result.Item?.Relation,
+      consumedCapacity: result.ConsumedCapacity,
+    })
+
     if (!result || !result.Item) {
       return undefined
     } else {
@@ -217,10 +268,18 @@ export class AuthzDynamo implements Authz {
       ExclusiveStartKey: after ? {
         PK: `${principal.__typename}#${principal.id}`,
         SK: atob(after)
-      } : undefined
+      } : undefined,
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const data = await this.dynamoClient.send(command)
+
+    this.logger.debug('Fetched relations for principal', {
+      principal: `${principal.__typename}#${principal.id}`,
+      resourceType: resourceType,
+      resultsLength: data.Items?.length,
+      consumedCapacity: data.ConsumedCapacity
+    })
 
     if (!data || !data.Items) {
       throw new Error(`Failed to fetch relations for principal ${principal.__typename}#${principal.id}`)
@@ -256,10 +315,18 @@ export class AuthzDynamo implements Authz {
             SK: `${resource.__typename}#${resource.id}`,
           }))
         }
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const data = await this.dynamoClient.send(command)
+
+    this.logger.debug('Fetched relations for principal', {
+      principal: `${principal.__typename}#${principal.id}`,
+      resourceCount: resources.length,
+      resultsLength: data.Responses?.[this.config.tableName]?.length,
+      consumedCapacity: data.ConsumedCapacity
+    })
 
     if (!data || !data.Responses || !data.Responses[this.config.tableName]) {
       throw new Error(`Failed to fetch relations for principal ${principal.__typename}#${principal.id}`)
@@ -310,14 +377,21 @@ export class AuthzDynamo implements Authz {
       return permission.type === 'transitive'
     })
 
-    const loadTransitiveRelations: Promise<ObjectsRelation<unknown>[]> = Promise.all(_.uniqWith(possibleTransitivePermissions.map((permission) => {
-      return permission.transitiveRelation
-    }), _.isEqual).flatMap((relation) => {
+    const possibleTransitiveRelations = _.uniqWith(possibleTransitivePermissions.flatMap((permission) => {
+      if (permission.transitiveRelation) {
+        return [permission.transitiveRelation]
+      }
+      return []
+    }), (relationA, relationB) => {
+      return relationA.relationName === relationB.relationName && relationA.targetType === relationB.targetType
+    })
+
+    const loadTransitiveRelations: Promise<ObjectsRelation<unknown>[]> = Promise.all(possibleTransitiveRelations.flatMap((relation) => {
       if (relation) {
         const relationName = relation.relationName
-        const transitiveRelationsToVerify = transitiveResources.filter((relation) => {
+        const transitiveRelationsToVerify = _.uniqWith(transitiveResources.filter((relation) => {
           return relation.relation === relationName
-        })
+        }), _.isEqual)
         return transitiveRelationsToVerify.map(async (relation) => {
           return await this.resolveRelations(resources.map((resource) => {
             return {
@@ -338,13 +412,21 @@ export class AuthzDynamo implements Authz {
             SK: `${resource.__typename}#${resource.id}`,
           }))
         }
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const [data, transitiveRelations] = await Promise.all([
       this.dynamoClient.send(command),
       loadTransitiveRelations
     ])
+
+    this.logger.debug('Fetched permissions for principal', {
+      principal: `${principal.__typename}#${principal.id}`,
+      resourceCount: resources.length,
+      resultsLength: data.Responses?.[this.config.tableName]?.length,
+      consumedCapacity: data.ConsumedCapacity
+    })
 
     if (!data || !data.Responses || !data.Responses[this.config.tableName]) {
       throw new Error(`Failed to fetch permissions for principal ${principal.__typename}#${principal.id}`)
@@ -427,10 +509,17 @@ export class AuthzDynamo implements Authz {
             SK: `${pair.target.__typename}#${pair.target.id}`,
           }))
         }
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     const data = await this.dynamoClient.send(command)
+
+    this.logger.debug('Fetched relations', {
+      requestedRelationsCount: pairs.length,
+      resultsLength: data.Responses?.[this.config.tableName]?.length,
+      consumedCapacity: data.ConsumedCapacity
+    })
 
     if (!data || !data.Responses || !data.Responses[this.config.tableName]) {
       throw new Error(`Failed to fetch relations for ${pairs.length} object pairs.`)
@@ -468,10 +557,16 @@ export class AuthzDynamo implements Authz {
             }
           }
         }
-      })
+      }),
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    await this.dynamoClient.send(command)
+    const result = await this.dynamoClient.send(command)
+
+    this.logger.debug('Removed relations', {
+      removedRelations: relations.length,
+      consumedCapacity: result?.ConsumedCapacity
+    })
   }
 
   async removeAllObjectRelations(object: ObjectDefinition<unknown, unknown>): Promise<void> {
@@ -486,10 +581,17 @@ export class AuthzDynamo implements Authz {
             SK: `${relationsToDelete.resource.__typename}#${relationsToDelete.resource.id}`,
           }
         }
-      }))
+      })),
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    await this.dynamoClient.send(command)
+    const result = await this.dynamoClient.send(command)
+
+    this.logger.debug('Removed all relations', {
+      object: `${object.__typename}#${object.id}`,
+      removedRelationsCount: relationsToDelete.relations.length,
+      consumedCapacity: result?.ConsumedCapacity
+    })
   }
 
 }

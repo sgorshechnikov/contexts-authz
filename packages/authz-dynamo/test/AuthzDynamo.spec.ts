@@ -39,7 +39,8 @@ describe('addRelations', () => {
             }
           }
         }
-      })
+      }),
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({}))
@@ -69,7 +70,8 @@ describe('getPermissions', () => {
       Key: {
         PK: `${principal.__typename}#${principal.id}`,
         SK: `${resource.__typename}#${resource.id}`,
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({}))
@@ -159,16 +161,14 @@ describe('getRelation', () => {
       Key: {
         PK: `${principal.__typename}#${principal.id}`,
         SK: `${resource.__typename}#${resource.id}`,
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Item: {
-        PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-        Relation: 'administrator'
-      }
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'administrator'},
+    ])
+
     await authzDynamo.getRelation(principal, resource)
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
   })
@@ -177,13 +177,10 @@ describe('getRelation', () => {
     const principal = new User('user-id')
     const resource = new Org('org-id')
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Item: {
-        PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-        Relation: 'administrator'
-      }
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'administrator'},
+    ])
+
     const relation = await authzDynamo.getRelation(principal, resource)
     expect(relation).toEqual(Org.Relation.Administrator)
   })
@@ -204,18 +201,13 @@ describe('getRelations', () => {
       },
       Limit: first,
       ExclusiveStartKey: undefined,
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Items: [{
-        PK: `${relationObject.__typename}#${relationObject.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }],
-      LastEvaluatedKey: {
-        PK: `${relationObject.__typename}#${relationObject.id}`,
-        SK: `${resource.__typename}#${resource.id}`
-      },
-    }))
+    mockDbRelations([
+      {source: relationObject, target: resource, relation: 'member'},
+    ])
+
     await authzDynamo.getRelations(resource, first)
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
@@ -238,18 +230,13 @@ describe('getRelations', () => {
         SK: `${resource.__typename}#${resource.id}`,
         PK: `${relationObject.__typename}#${relationObject.id}`,
       },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Items: [{
-        PK: `${relationObject.__typename}#${relationObject.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }],
-      LastEvaluatedKey: {
-        PK: `${relationObject.__typename}#${relationObject.id}`,
-        SK: `${resource.__typename}#${resource.id}`
-      },
-    }))
+    mockDbRelations([
+      {source: relationObject, target: resource, relation: 'member'},
+    ])
+
     await authzDynamo.getRelations(resource, first, undefined, btoa(`${relationObject.__typename}#${relationObject.id}`))
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
@@ -305,18 +292,13 @@ describe('getRelations', () => {
         SK: `${resource.__typename}#${resource.id}`,
         PK: `${relationObject.__typename}#${relationObject.id}`,
       },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Items: [{
-        PK: `${relationObject.__typename}#${relationObject.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }],
-      LastEvaluatedKey: {
-        PK: `${relationObject.__typename}#${relationObject.id}`,
-        SK: `${resource.__typename}#${resource.id}`
-      },
-    }))
+    mockDbRelations([
+      {source: relationObject, target: resource, relation: 'member'},
+    ])
+
     await authzDynamo.getRelations(resource, first, relationObject.__typename, btoa(`${relationObject.__typename}#${relationObject.id}`))
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
@@ -338,15 +320,13 @@ describe('getRelationsForPrincipal', () => {
       },
       Limit: first,
       ExclusiveStartKey: undefined,
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Items: [{
-        PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }],
-      LastEvaluatedKey: {PK: `${principal.__typename}#${principal.id}`, SK: `${resource.__typename}#${resource.id}`},
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'member'},
+    ])
+
     await authzDynamo.getRelationsForPrincipal(principal, resource.__typename, first)
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
@@ -369,15 +349,13 @@ describe('getRelationsForPrincipal', () => {
         PK: `${principal.__typename}#${principal.id}`,
         SK: `${resource.__typename}#${resource.id}`,
       },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Items: [{
-        PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }],
-      LastEvaluatedKey: {PK: `${principal.__typename}#${principal.id}`, SK: `${resource.__typename}#${resource.id}`},
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'member'},
+    ])
+
     await authzDynamo.getRelationsForPrincipal(principal, resource.__typename, first, btoa(`${resource.__typename}#${resource.id}`))
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
@@ -433,18 +411,14 @@ describe('getPrincipalRelationsForEntities', () => {
             SK: `${resource.__typename}#${resource.id}`,
           }]
         }
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Responses: {
-        [TEST_TABLE]: [{
-          PK: `${principal.__typename}#${principal.id}`,
-          SK: `${resource.__typename}#${resource.id}`,
-          Relation: 'member'
-        }]
-      }
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'member'},
+    ])
+
     await authzDynamo.getPrincipalRelationsForEntities(principal, [resource])
 
     expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
@@ -454,15 +428,10 @@ describe('getPrincipalRelationsForEntities', () => {
     const principal = new User('user-id')
     const resource = new Org('org-id')
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Responses: {
-        [TEST_TABLE]: [{
-          PK: `${principal.__typename}#${principal.id}`,
-          SK: `${resource.__typename}#${resource.id}`,
-          Relation: 'member'
-        }]
-      }
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'member'},
+    ])
+
     const relations = await authzDynamo.getPrincipalRelationsForEntities(principal, [resource])
 
     expect(relations).toEqual([{
@@ -564,7 +533,8 @@ describe('principalHasPermission', () => {
       Key: {
         PK: `${principal.__typename}#${principal.id}`,
         SK: `${resource.__typename}#${resource.id}`,
-      }
+      },
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({}))
@@ -630,19 +600,13 @@ describe('removeRelations', () => {
             SK: `${resource.__typename}#${resource.id}`,
           }
         }
-      }]
+      }],
+      ReturnConsumedCapacity: "TOTAL",
     })
 
-    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
-      Items: [{
-        PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`,
-      }],
-      LastEvaluatedKey: {
-        PK: `${principal.__typename}#${principal.id}`,
-        SK: `${resource.__typename}#${resource.id}`
-      },
-    }))
+    mockDbRelations([
+      {source: principal, target: resource, relation: 'member'},
+    ])
 
     await authzDynamo.removeRelations([
       {principal, resource}
@@ -668,7 +632,8 @@ describe('removeAllObjectRelations', () => {
             SK: `${resource.__typename}#${resource.id}`,
           }
         }
-      }]
+      }],
+      ReturnConsumedCapacity: "TOTAL",
     })
 
     jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
