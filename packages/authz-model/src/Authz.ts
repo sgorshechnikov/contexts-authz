@@ -9,7 +9,7 @@ export interface Authz {
 
   getPrincipalRelationsForEntities<R>(principal: ObjectDefinition<unknown, unknown>, resources: ObjectDefinition<unknown, R>[]): Promise<ObjectRelation<R>[]>;
 
-  getPermissions<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>): Promise<P[]>;
+  getPermissions<P>(principal: ObjectDefinition<unknown, unknown>, resource: ObjectDefinition<P, unknown>, requestedPermissions?: P[]): Promise<P[]>;
 
   getPrincipalPermissionsForEntities<P, R>(
       principal: ObjectDefinition<unknown, unknown>,
