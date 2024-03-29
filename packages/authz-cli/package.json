@@ -1,6 +1,6 @@
 {
   "name": "@contexts-authz/authz-cli",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "main": "index.js",
   "dependencies": {
     "dts-dom": "^3.7.0",
