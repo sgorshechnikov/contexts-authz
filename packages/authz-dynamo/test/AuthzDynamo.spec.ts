@@ -4,13 +4,13 @@ import {DynamoDBClient} from "@aws-sdk/client-dynamodb";
 import {Org, User, Workspace, Document} from "./test-model";
 import {BatchGetCommand, GetCommand, QueryCommand, TransactWriteCommand} from "@aws-sdk/lib-dynamodb"
 import './toBeMatchingDynamoCommand';
-import {ObjectsRelation} from "@contexts-authz/authz-model";
+import {Authz, ObjectsRelation} from "@contexts-authz/authz-model";
 
 jest.mock('@aws-sdk/client-dynamodb')
 
 const TEST_TABLE = 'test-table'
 const testModel = getAuthZDefs('test-permissions.authz')
-const authzDynamo = new AuthzDynamo(new DynamoDBClient(), {
+const authzDynamo: Authz = new AuthzDynamo(new DynamoDBClient(), {
   tableName: TEST_TABLE,
   authzDefinition: testModel,
 })
@@ -285,6 +285,41 @@ describe('getRelations', () => {
       }]
     }
     expect(relations).toEqual(expectedRelations)
+  })
+
+  test('should query for relations of requested target type', async () => {
+    const first = 10
+    const resource = new Org('org-id')
+    const relationObject = new User('user-id')
+
+    const expectedDynamoCommand = new QueryCommand({
+      TableName: TEST_TABLE,
+      IndexName: "RolesByResource",
+      KeyConditionExpression: "SK = :sk AND begins_with(PK, :pk)",
+      ExpressionAttributeValues: {
+        ":sk": `${resource.__typename}#${resource.id}`,
+        ":pk": relationObject.__typename,
+      },
+      Limit: first,
+      ExclusiveStartKey: {
+        SK: `${resource.__typename}#${resource.id}`,
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+      },
+    })
+
+    jest.spyOn(DynamoDBClient.prototype, 'send').mockImplementation(() => Promise.resolve({
+      Items: [{
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`,
+      }],
+      LastEvaluatedKey: {
+        PK: `${relationObject.__typename}#${relationObject.id}`,
+        SK: `${resource.__typename}#${resource.id}`
+      },
+    }))
+    await authzDynamo.getRelations(resource, first, relationObject.__typename, btoa(`${relationObject.__typename}#${relationObject.id}`))
+
+    expect(DynamoDBClient.prototype.send).toHaveBeenCalledWith(expect.toBeMatchingDynamoCommand(expectedDynamoCommand))
   })
 })
 

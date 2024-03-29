@@ -21,7 +21,7 @@ export interface Authz {
       requestedPermissions: P[]
   ): Promise<ObjectPermissions<P>[]>;
 
-  getRelations<R>(resource: ObjectDefinition<unknown, R>, first: number, after?: string): Promise<ObjectRelations<R>>;
+  getRelations<R>(resource: ObjectDefinition<unknown, R>, first: number, principalType?: string, after?: string): Promise<ObjectRelations<R>>;
 
   addRelations<R>(relations: ObjectsRelation<R>[]): Promise<void>;
 
