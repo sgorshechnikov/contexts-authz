@@ -1,0 +1,103 @@
+{
+  parserClass="com.contexts.authzintellij.language.parser.AuthzParser"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Authz"
+  psiImplClassSuffix="Impl"
+  psiPackage="com.contexts.authzintellij.language.psi"
+  psiImplPackage="com.contexts.authzintellij.language.psi.impl"
+
+  elementTypeHolderClass="com.contexts.authzintellij.language.psi.AuthzTypes"
+  elementTypeClass="com.contexts.authzintellij.language.psi.AuthzElementType"
+  tokenTypeClass="com.contexts.authzintellij.language.psi.AuthzTokenType"
+
+  psiImplUtilClass="com.contexts.authzintellij.language.psi.impl.AuthzPsiImplUtil"
+
+  tokens = [
+    L_CURLY="{"
+    R_CURLY="}"
+    DOT="."
+    COLON=":"
+    EQUALS="="
+    PLUS="+"
+    PIPE="|"
+  ]
+}
+
+authzFile ::= definitions
+
+private definitions ::= (definition_def | COMMENT)*
+
+definition_def ::= definition definition_name_def definition_block { pin = 1 }
+
+definition_name_def ::= IDENTIFIER {
+  pin = 1
+
+  mixin="com.contexts.authzintellij.language.psi.impl.AuthzNamedElementImpl"
+  implements="com.contexts.authzintellij.language.psi.AuthzNamedElement"
+  methods=[getName setName getNameIdentifier getReferences]
+}
+
+definition_block ::= "{" (definition_block_items)* "}" { pin = 1}
+
+definition_block_items ::= !('}' | <<eof>>) (relation_def | permission_def | COMMENT)* {
+    pin = 1
+    recoverWhile = "definition_block_items_recover"
+}
+
+private definition_block_items_recover ::= !('}' | <<eof>>)
+
+relation_def ::= relation relation_def_name COLON relation_expression { pin = 1 }
+
+relation_def_name ::= RELATION_NAME {
+    pin = 1
+
+    mixin="com.contexts.authzintellij.language.psi.impl.AuthzNamedElementImpl"
+    implements="com.contexts.authzintellij.language.psi.AuthzNamedElement"
+    methods=[getName setName getNameIdentifier getReferences]
+}
+
+relation_expression_operator ::= PIPE
+
+relation_expression ::= relation_type (relation_expression_operator relation_type)* { pin = 1 }
+
+relation_type ::= IDENTIFIER {
+    pin = 1
+
+    mixin="com.contexts.authzintellij.language.psi.impl.AuthzNamedElementImpl"
+    implements="com.contexts.authzintellij.language.psi.AuthzNamedElement"
+    methods=[getName setName getNameIdentifier getReferences handleElementRename]
+}
+
+permission_def ::= permission permission_def_name EQUALS permission_expression { pin = 1 }
+
+permission_def_name ::= PERMISSION_NAME {
+    pin = 1
+
+    mixin="com.contexts.authzintellij.language.psi.impl.AuthzNamedElementImpl"
+    implements="com.contexts.authzintellij.language.psi.AuthzNamedElement"
+    methods=[getName setName getNameIdentifier getReferences]
+}
+
+permission_expression_operator ::= PLUS
+
+permission_expression ::= permission_reference (permission_expression_operator permission_reference)* { pin = 1 }
+
+permission_reference ::= permission_reference_relation_name (DOT permission_reference_permission_name)? { pin = 1 }
+
+permission_reference_relation_name ::= RELATION_NAME {
+    pin = 1
+
+    mixin="com.contexts.authzintellij.language.psi.impl.AuthzNamedElementImpl"
+    implements="com.contexts.authzintellij.language.psi.AuthzNamedElement"
+    methods=[getName setName getNameIdentifier getReferences]
+}
+
+permission_reference_permission_name ::= PERMISSION_NAME {
+    pin = 1
+
+    mixin="com.contexts.authzintellij.language.psi.impl.AuthzNamedElementImpl"
+    implements="com.contexts.authzintellij.language.psi.AuthzNamedElement"
+    methods=[getName setName getNameIdentifier getReferences]
+}

@@ -1,0 +1,64 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+  <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+  <id>com.contexts.authz-intellij.authz-intellij</id>
+
+  <!-- Public plugin name should be written in Title Case.
+       Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
+  <name>AuthZ</name>
+
+  <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+  <vendor email="support@contexts.online" url="https://contexts.online">Contexts</vendor>
+
+  <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+       Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
+       Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
+  <description><![CDATA[
+    Syntax highlight for AuthZ schema.
+  ]]></description>
+
+  <!-- Product and plugin compatibility requirements.
+       Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.java</depends>
+
+  <!-- Extension points defined by the plugin.
+       Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+  <extensions defaultExtensionNs="com.intellij">
+    <fileType
+        name="Contexts Authz"
+        implementationClass="com.contexts.authzintellij.language.AuthzFileType"
+        fieldName="INSTANCE"
+        language="Authz"
+        extensions="authz"/>
+
+    <lang.parserDefinition
+        language="Authz"
+        implementationClass="com.contexts.authzintellij.language.AuthzParserDefinition"/>
+
+    <lang.syntaxHighlighterFactory
+        language="Authz"
+        implementationClass="com.contexts.authzintellij.language.AuthzSyntaxHighlighterFactory"/>
+
+    <completion.contributor
+        language="Authz"
+        implementationClass="com.contexts.authzintellij.language.psi.completion.AuthzCompletionContributor"/>
+
+    <lang.commenter
+        language="Authz"
+        implementationClass="com.contexts.authzintellij.language.AuthzCommenter"/>
+
+    <lang.braceMatcher
+        language="Authz"
+        implementationClass="com.contexts.authzintellij.language.AuthzBraceMatcher"/>
+
+    <psi.referenceContributor
+        language="Authz"
+        implementation="com.contexts.authzintellij.language.psi.completion.AuthzReferenceContributor"/>
+
+    <spellchecker.support language="Authz" implementationClass="com.contexts.authzintellij.language.AuthzSpellcheckingStrategy"/>
+
+    <lang.refactoringSupport language="Authz" implementationClass="com.contexts.authzintellij.language.AuthzRefactoringSupportProvider"/>
+
+  </extensions>
+</idea-plugin>
