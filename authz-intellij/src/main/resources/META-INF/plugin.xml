@@ -14,7 +14,8 @@
        Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
        Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
   <description><![CDATA[
-    Syntax highlight for AuthZ schema.
+    Syntax highlighting for AuthZ schema. Authz is a declarative language for defining access control policies.
+    Check examples in https://github.com/sgorshechnikov/contexts-authz/blob/main/README.md
   ]]></description>
 
   <!-- Product and plugin compatibility requirements.
