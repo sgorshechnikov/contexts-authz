@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "docker:pinDigests", "helpers:pinGitHubActionDigests", ":pinDevDependencies"],
+  "prHourlyLimit": 10,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchPackagePatterns": ["*"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "description": "Group together all minor and patch updates in to a single PR",
+      "groupName": "Non-major updates"
+    }
+  ]
+}
