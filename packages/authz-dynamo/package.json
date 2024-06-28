@@ -9,6 +9,6 @@
     "@aws-sdk/util-dynamodb": "^3.511.0"
   },
   "devDependencies": {
-    "lodash": "^4.17.21"
+    "lodash": "4.17.21"
   }
 }
