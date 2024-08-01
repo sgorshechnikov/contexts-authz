@@ -15,6 +15,7 @@ export type AuthzCodegenConfig = {
   overwrite: boolean;
   schema: string;
   generates: {
+    //eslint-disable-next-line @typescript-eslint/no-empty-object-type
     [output: string]: {
       //empty
     }
