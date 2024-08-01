@@ -4,7 +4,7 @@ import MatcherUtils = jest.MatcherUtils;
 import {
   DynamoDBDocumentClientCommand
 } from "@aws-sdk/lib-dynamodb/dist-types/baseCommand/DynamoDBDocumentClientCommand";
-import _ = require("lodash");
+import _  from "lodash";
 
 export function toBeMatchingDynamoCommand(
     //eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,10 +46,12 @@ interface CustomMatchers<R = unknown> {
 }
 
 declare global {
-  //eslint-disable-next-line @typescript-eslint/no-namespace
   namespace jest {
+    //eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface Expect extends CustomMatchers {}
+    //eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface Matchers<R> extends CustomMatchers<R> {}
+    //eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface InverseAsymmetricMatchers extends CustomMatchers {}
   }
 }
