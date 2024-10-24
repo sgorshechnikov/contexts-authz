@@ -9,7 +9,7 @@
     "cosmiconfig": "^9.0.0"
   },
   "devDependencies": {
-    "@types/lodash": "4.17.10"
+    "@types/lodash": "4.17.12"
   },
   "bin": {
     "authz-codegen": "dist/index.js"
