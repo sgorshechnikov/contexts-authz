@@ -1,5 +1,6 @@
 {
   parserClass="com.contexts.authzintellij.language.parser.AuthzParser"
+  parserUtilClass="com.contexts.authzintellij.language.parser.AuthzParserUtil"
 
   extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
 

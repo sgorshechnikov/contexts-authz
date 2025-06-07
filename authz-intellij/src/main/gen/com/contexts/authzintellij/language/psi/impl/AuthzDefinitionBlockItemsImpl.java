@@ -1,0 +1,42 @@
+// This is a generated file. Not intended for manual editing.
+package com.contexts.authzintellij.language.psi.impl;
+
+import java.util.List;
+import org.jetbrains.annotations.*;
+import com.intellij.lang.ASTNode;
+import com.intellij.psi.PsiElement;
+import com.intellij.psi.PsiElementVisitor;
+import com.intellij.psi.util.PsiTreeUtil;
+import static com.contexts.authzintellij.language.psi.AuthzTypes.*;
+import com.intellij.extapi.psi.ASTWrapperPsiElement;
+import com.contexts.authzintellij.language.psi.*;
+
+public class AuthzDefinitionBlockItemsImpl extends ASTWrapperPsiElement implements AuthzDefinitionBlockItems {
+
+  public AuthzDefinitionBlockItemsImpl(@NotNull ASTNode node) {
+    super(node);
+  }
+
+  public void accept(@NotNull AuthzVisitor visitor) {
+    visitor.visitDefinitionBlockItems(this);
+  }
+
+  @Override
+  public void accept(@NotNull PsiElementVisitor visitor) {
+    if (visitor instanceof AuthzVisitor) accept((AuthzVisitor)visitor);
+    else super.accept(visitor);
+  }
+
+  @Override
+  @NotNull
+  public List<AuthzPermissionDef> getPermissionDefList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, AuthzPermissionDef.class);
+  }
+
+  @Override
+  @NotNull
+  public List<AuthzRelationDef> getRelationDefList() {
+    return PsiTreeUtil.getChildrenOfTypeAsList(this, AuthzRelationDef.class);
+  }
+
+}
