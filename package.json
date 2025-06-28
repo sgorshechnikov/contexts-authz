@@ -17,8 +17,8 @@
   ],
   "devDependencies": {
     "@types/jest": "30.0.0",
-    "@types/node": "22.15.33",
-    "eslint": "9.29.0",
+    "@types/node": "22.15.34",
+    "eslint": "9.30.0",
     "jest": "30.0.3",
     "ts-jest": "29.4.0",
     "ts-node-dev": "2.0.0",
