@@ -4,7 +4,6 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "dependencies": {
-    "@contexts-authz/authz-grammar": "workspace:*",
     "@aws-sdk/client-dynamodb": "^3.511.0",
     "@aws-sdk/lib-dynamodb": "^3.511.0",
     "@aws-sdk/util-dynamodb": "^3.511.0"
