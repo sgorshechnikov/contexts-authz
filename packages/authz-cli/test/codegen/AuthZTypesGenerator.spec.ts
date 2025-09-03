@@ -90,6 +90,7 @@ describe('AuthZTypesGenerator', () => {
       
       definition group {
         permission view = user
+        permission "edit:group_name" = user
       }
     `
     const ast = buildAst(input)
@@ -116,6 +117,7 @@ describe('AuthZTypesGenerator', () => {
       export namespace Group {
         export enum Permission {
             View = "view",
+            EditGroupName = "edit:group_name",
         }
       }
     `

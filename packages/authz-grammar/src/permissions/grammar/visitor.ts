@@ -76,7 +76,7 @@ export class AuthzAstBuilderVisitor extends parser.getBaseCstVisitorConstructor(
   permissions(node: PermissionNode): Permission {
     return {
       type: ModelType.Permission,
-      name: node.permissionName[0].image,
+      name: node.permissionName[0].image + (node.permissionClassifier ? `:${node.permissionClassifier.map(n => n.image).join(":")}` : ''),
       permissionExpression: node.permissionExpression.map((permissionExpression) => this.visit(permissionExpression)),
     }
   }

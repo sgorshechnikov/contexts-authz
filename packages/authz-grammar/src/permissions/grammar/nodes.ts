@@ -29,6 +29,7 @@ export interface TypeReferenceNode {
 
 export interface PermissionNode {
   permissionName: IToken[];
+  permissionClassifier: IToken[];
 
   permissionExpression: CstNode[];
 }

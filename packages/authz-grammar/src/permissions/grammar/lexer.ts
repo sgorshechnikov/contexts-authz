@@ -33,6 +33,7 @@ export const Minus = createToken({name: 'Minus', pattern: /-/});
 export const Ampersand = createToken({name: 'Ampersand', pattern: /&/});
 export const Pipe = createToken({name: 'Pipe', pattern: /\|/});
 export const Dot = createToken({name: 'Dot', pattern: /\./});
+export const Quote = createToken({name: 'Quote', pattern: /"/});
 
 export const WhiteSpace = createToken({
   name: 'WhiteSpace',
@@ -60,6 +61,7 @@ export const authzTokens = [
   Ampersand,
   Pipe,
   Dot,
+  Quote,
 ];
 
 export const AuthzLexer = new Lexer(authzTokens);

@@ -6,7 +6,7 @@ import {
   Identifier,
   LCurly,
   Permission,
-  Pipe, Plus,
+  Pipe, Plus, Quote,
   RCurly,
   Relation,
   tokenize
@@ -62,7 +62,18 @@ export class AuthZParser extends CstParser {
 
   private permission = this.RULE('permissions', () => {
     this.CONSUME(Permission);
-    this.CONSUME(Identifier, {LABEL: 'permissionName'});
+    this.OR([
+      {ALT: () => {
+        this.CONSUME(Quote);
+        this.CONSUME2(Identifier, {LABEL: 'permissionName'})
+        this.OPTION(() => this.MANY(() => {
+          this.CONSUME(Colon);
+          this.CONSUME3(Identifier, {LABEL: 'permissionClassifier'});
+        }));
+        this.CONSUME3(Quote);
+      }},
+      {ALT: () => this.CONSUME(Identifier, {LABEL: 'permissionName'})},
+    ]);
     this.CONSUME(Equals);
     this.SUBRULE(this.permissionExpression);
   });
@@ -77,10 +88,10 @@ export class AuthZParser extends CstParser {
 
   private relationReference = this.RULE('relationReference', () => {
     this.CONSUME(Identifier, {LABEL: 'relationName'});
-    this.OPTION(() => {
+    this.OPTION(() => this.MANY(() => {
       this.CONSUME(Dot);
-      this.CONSUME2(Identifier, {LABEL: 'childPermission'})
-    });
+      this.CONSUME2(Identifier, {LABEL: 'childPermission'});
+    }));
   })
 
   private permissionRelationalOperator = this.RULE('permissionRelationalOperator', () => {
