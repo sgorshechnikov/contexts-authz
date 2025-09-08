@@ -7,7 +7,7 @@ import {
   Identifier,
   LCurly,
   Permission, PermissionQuoted,
-  Pipe, Plus, Quote,
+  Pipe, Plus,
   RCurly,
   Relation,
   tokenize
