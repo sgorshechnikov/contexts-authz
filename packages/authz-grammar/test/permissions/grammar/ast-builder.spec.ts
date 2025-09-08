@@ -73,6 +73,42 @@ describe('AST builder', () => {
     ])
   });
 
+  test('parses permissions with colons and dashes', () => {
+    const input = `
+      definition user {}
+      
+      definition group {
+        relation member: user
+        
+        permission "write:group.role-assignments" = member
+      }
+    `
+    const ast = buildAst(input)
+    expect(ast.definitions).toEqual([
+      {type: ModelType.Definition, name: 'user', relations: [], permissions: []},
+      {
+        type: ModelType.Definition,
+        name: 'group',
+        relations: [{
+          type: ModelType.Relation,
+          name: 'member',
+          relationExpression: [{
+            type: ModelType.RelationExpression,
+            lhs: {type: ModelType.TypeReference, name: 'user'},
+          }]
+        }],
+        permissions: [{
+          type: ModelType.Permission,
+          name: 'write:group.role-assignments',
+          permissionExpression: [{
+            type: ModelType.PermissionExpression,
+            lhs: {type: ModelType.RelationReference, name: 'member'},
+          }]
+        }]
+      },
+    ])
+  });
+
   test('parses referenced relations and permissions', () => {
     const input = `
       definition user {}

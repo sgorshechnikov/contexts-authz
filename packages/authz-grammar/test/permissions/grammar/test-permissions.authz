@@ -29,4 +29,5 @@ definition document {
   permission view = owner + owner.admin + member + guest
   permission manage = owner->owner.admin
   permission "write:comments" = owner + owner.admin + member
+  permission "write:groups.role-assignments" = owner
 }

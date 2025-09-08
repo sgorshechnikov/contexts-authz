@@ -76,7 +76,7 @@ export class AuthzAstBuilderVisitor extends parser.getBaseCstVisitorConstructor(
   permissions(node: PermissionNode): Permission {
     return {
       type: ModelType.Permission,
-      name: node.permissionName[0].image + (node.permissionClassifier ? `:${node.permissionClassifier.map(n => n.image).join(":")}` : ''),
+      name: stripQuotes(node.permissionName[0].image),
       permissionExpression: node.permissionExpression.map((permissionExpression) => this.visit(permissionExpression)),
     }
   }
@@ -113,4 +113,15 @@ const astBuilder = new AuthzAstBuilderVisitor();
 export function buildAst(text: string): AuthzModel {
   const cst = parse(text);
   return astBuilder.visit(cst);
+}
+
+function stripQuotes(str: string): string {
+  if (str.length >= 2) {
+    const first = str[0];
+    const last = str[str.length - 1];
+    if ((first === '"' && last === '"')) {
+      return str.slice(1, -1);
+    }
+  }
+  return str;
 }

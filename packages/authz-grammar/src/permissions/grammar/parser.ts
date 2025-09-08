@@ -6,7 +6,7 @@ import {
   Definition, Dot, Equals,
   Identifier,
   LCurly,
-  Permission,
+  Permission, PermissionQuoted,
   Pipe, Plus, Quote,
   RCurly,
   Relation,
@@ -65,13 +65,7 @@ export class AuthZParser extends CstParser {
     this.CONSUME(Permission);
     this.OR([
       {ALT: () => {
-        this.CONSUME(Quote);
-        this.CONSUME2(Identifier, {LABEL: 'permissionName'})
-        this.OPTION(() => this.MANY(() => {
-          this.CONSUME(Colon);
-          this.CONSUME3(Identifier, {LABEL: 'permissionClassifier'});
-        }));
-        this.CONSUME3(Quote);
+        this.CONSUME(PermissionQuoted, { LABEL: 'permissionName' });
       }},
       {ALT: () => this.CONSUME(Identifier, {LABEL: 'permissionName'})},
     ]);
