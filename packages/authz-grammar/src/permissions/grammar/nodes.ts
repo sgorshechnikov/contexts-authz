@@ -42,6 +42,7 @@ export interface PermissionExpressionNode {
 
 export interface RelationReferenceNode {
   relationName: IToken[];
+  nestedRelationName?: IToken[]
 
   childPermission?: IToken[];
 }

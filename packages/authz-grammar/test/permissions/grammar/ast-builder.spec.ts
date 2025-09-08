@@ -144,4 +144,127 @@ describe('AST builder', () => {
       },
     ])
   });
+
+  test('parses referenced nested relations and permissions', () => {
+    const input = `
+      definition user {}
+      
+      definition org {
+        relation admin: user
+        
+        permission manage = admin
+      }
+      
+      definition workspace {
+        relation owner: org
+      }
+      
+      definition group {
+        relation owner: workspace
+        
+        permission view = owner->owner.manage
+      }
+    `
+    const ast = buildAst(input)
+    expect(ast.definitions).toEqual([
+      {
+        type: ModelType.Definition,
+        name: "user",
+        relations: [],
+        permissions: []
+      },
+      {
+        type: ModelType.Definition,
+        name: "org",
+        "relations": [
+          {
+            "type": ModelType.Relation,
+            name: "admin",
+            relationExpression: [
+              {
+                type: ModelType.RelationExpression,
+                lhs: {
+                  type: ModelType.TypeReference,
+                  name: "user"
+                }
+              }
+            ]
+          }
+        ],
+        permissions: [
+          {
+            type: ModelType.Permission,
+            name: "manage",
+            permissionExpression: [
+              {
+                type: ModelType.PermissionExpression,
+                lhs: {
+                  type: ModelType.RelationReference,
+                  name: "admin"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        type: ModelType.Definition,
+        name: "workspace",
+        relations: [
+          {
+            type: ModelType.Relation,
+            name: "owner",
+            relationExpression: [
+              {
+                type: ModelType.RelationExpression,
+                lhs: {
+                  type: ModelType.TypeReference,
+                  name: "org"
+                }
+              }
+            ]
+          }
+        ],
+        permissions: []
+      },
+      {
+        type: ModelType.Definition,
+        name: "group",
+        relations: [
+          {
+            type: ModelType.Relation,
+            name: "owner",
+            relationExpression: [
+              {
+                type: ModelType.RelationExpression,
+                lhs: {
+                  type: ModelType.TypeReference,
+                  name: "workspace"
+                }
+              }
+            ]
+          }
+        ],
+        permissions: [
+          {
+            type: ModelType.Permission,
+            name: "view",
+            permissionExpression: [
+              {
+                type: ModelType.PermissionExpression,
+                lhs: {
+                  type: ModelType.RelationReference,
+                  name: "owner",
+                  nestedRelationName: [
+                    "owner"
+                  ],
+                  childPermission: "manage"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ])
+  });
 });

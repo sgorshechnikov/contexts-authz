@@ -1,5 +1,6 @@
 import {CstNode, CstParser} from "chevrotain";
 import {
+  Arrow,
   authzTokens,
   Colon,
   Definition, Dot, Equals,
@@ -89,9 +90,13 @@ export class AuthZParser extends CstParser {
   private relationReference = this.RULE('relationReference', () => {
     this.CONSUME(Identifier, {LABEL: 'relationName'});
     this.OPTION(() => this.MANY(() => {
-      this.CONSUME(Dot);
-      this.CONSUME2(Identifier, {LABEL: 'childPermission'});
+      this.CONSUME(Arrow);
+      this.CONSUME2(Identifier, {LABEL: 'nestedRelationName'});
     }));
+    this.OPTION2(() => {
+      this.CONSUME(Dot);
+      this.CONSUME3(Identifier, {LABEL: 'childPermission'});
+    });
   })
 
   private permissionRelationalOperator = this.RULE('permissionRelationalOperator', () => {

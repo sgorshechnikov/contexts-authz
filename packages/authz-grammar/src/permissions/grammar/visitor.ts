@@ -94,6 +94,7 @@ export class AuthzAstBuilderVisitor extends parser.getBaseCstVisitorConstructor(
     return {
       type: ModelType.RelationReference,
       name: node.relationName[0].image,
+      nestedRelationName: node.nestedRelationName?.flatMap((token) => token.image),
       childPermission: node.childPermission?.[0].image,
     }
   }

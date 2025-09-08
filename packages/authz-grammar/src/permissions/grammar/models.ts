@@ -62,6 +62,7 @@ export interface PermissionExpression extends Model {
 export interface RelationReference extends Model {
   type: ModelType.RelationReference;
   name: string;
+  nestedRelationName?: string[];
 
   childPermission?: string;
 }

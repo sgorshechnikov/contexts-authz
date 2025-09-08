@@ -27,6 +27,6 @@ definition document {
   permission delete = owner + owner.admin
   permission edit = owner + owner.admin + member
   permission view = owner + owner.admin + member + guest
-  permission manage = owner.owner.admin
+  permission manage = owner->owner.admin
   permission "write:comments" = owner + owner.admin + member
 }
