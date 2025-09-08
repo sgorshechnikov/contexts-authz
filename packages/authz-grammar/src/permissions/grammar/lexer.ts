@@ -10,7 +10,7 @@ export const PermissionQuoted = createToken({
   //  - "( : [A-Za-z0-9][A-Za-z0-9-]* (?: \. [A-Za-z0-9][A-Za-z0-9-]* )* )?" =>
   //      optional colon followed by one or more dot-separated segments;
   //      each segment starts with an alnum and may contain dashes (but not dots or underscores at start).
-  pattern: /"([A-Za-z][A-Za-z0-9_-]*)(:[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9][A-Za-z0-9-]*)*)?"/,
+  pattern: /"([A-Za-z][A-Za-z0-9_-]*)(:[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9][A-Za-z0-9_-]*)*)?"/,
 });
 
 // We specify the "longer_alt" property to resolve keywords vs identifiers ambiguity.
