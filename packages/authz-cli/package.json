@@ -6,7 +6,7 @@
     "dts-dom": "^3.7.0",
     "lodash": "^4.17.21",
     "commander": "^14.0.0",
-    "cosmiconfig": "^9.0.0"
+    "cosmiconfig": "^10.0.0"
   },
   "devDependencies": {
     "@types/lodash": "4.17.20"
